@@ -32,15 +32,19 @@ def read_requirements(path):
 setup(
     name="dispa_link",
     version=read("dispa_link", "VERSION"),
-    description="project_description",
-    url="https://github.com/energy-modelling-toolkit/Dispa-LINK.git",
+    description="Soft-linking toolbox for the Dispa-SET model",
+    url="https://github.com/energy-modelling-toolkit/Dispa-LINK",
+    license='EUPL v1.2',
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
-    author="Matija Pavičević",
+    author="Matija Pavičević, Sylvain Quoilin",
     packages=find_packages(exclude=["tests", ".github"]),
+    include_package_data=True,
     install_requires=read_requirements("requirements.txt"),
     entry_points={
         "console_scripts": ["dispa_link = dispa_link.__main__:main"]
     },
     extras_require={"test": read_requirements("requirements-test.txt")},
+    classifiers=['Intended Audience :: Science/Research', 'Programming Language :: Python'],
+    keywords=['database', 'energy systems analysis']
 )

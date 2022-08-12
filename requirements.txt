@@ -3,3 +3,19 @@
 # Add the requirements you need to this file.
 # or run `make init` to create this file automatically based on the template.
 # You can also run `make switch-to-poetry` to use the poetry package manager.
+numpy
+pandas
+matplotlib
+future
+click
+xlrd==1.2
+gdxcc
+gamsxcc
+optcc
+proj
+cartopy
+geos
+scipy
+shapely
+pyproj
+pyshp
