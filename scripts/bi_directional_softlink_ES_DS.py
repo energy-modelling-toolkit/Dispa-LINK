@@ -25,7 +25,7 @@ typical_units_folder = dst_path / 'Inputs' / 'EnergyScope'
 
 # Energy Scope
 ES_folder = dst_path.parent / 'EnergyScope'
-DST_folder = dst_path.parent / 'DispaSET-SideTools'
+DL_folder = dst_path.parent / 'Dispa-LINK'
 
 target_year = 2050
 config_link = {'DateRange': dl.get_date_range(target_year), 'TypicalUnits': typical_units_folder}
@@ -104,7 +104,7 @@ max_loops = 4
 # %% ###################################
 ######## Soft-linking procedure ########
 ########################################
-for i in range(1,max_loops+1):
+for i in range(max_loops):
     config_es['case_study'] = case_study + '_loop_' + str(i)
 # for i in trange(max_loops, desc='Mapping', leave=True):
     print('loop number', i)
@@ -203,10 +203,10 @@ for i in range(1,max_loops+1):
     if dispaset_version == '2.5_BS':
         config = ds.load_config('../ConfigFiles/Config_EnergyScope_BS.xlsx')
     # Assign new input csv files if needed
-    config['ReservoirLevels'] = str(DST_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'ReservoirLevels' / '##' /
+    config['ReservoirLevels'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'ReservoirLevels' / '##' /
                                     'ReservoirLevels.csv')
 
-    config['SimulationDirectory'] = str(DST_folder / 'Simulations' / str(case_study + '_loop_' + str(i)))
+    config['SimulationDirectory'] = str(DL_folder / 'Simulations' / str(case_study + '_loop_' + str(i)))
     config['default']['PriceOfCO2'] = abs(es_outputs['CO2_cost'].loc['CO2_cost', 'CO2_cost'] * 1000)
     config['default']['CostCurtailment'] = abs(es_outputs['Curtailment_cost'].loc['Curtailment_cost',
                                                                                   'Curtailment_cost'] * 1000)
@@ -215,21 +215,21 @@ for i in range(1,max_loops+1):
 
     #%% Dispa-SET version 2.5
     if dispaset_version == '2.5':
-        config['H2FlexibleDemand'] = str(DST_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
+        config['H2FlexibleDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
                                          'H2_demand.csv')
-        config['H2FlexibleCapacity'] = str(DST_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
+        config['H2FlexibleCapacity'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
                                            'PtLCapacities.csv')
-        config['Outages'] = str(DST_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'OutageFactor' / '##' /
+        config['Outages'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'OutageFactor' / '##' /
                                 'OutageFactor.csv')
 
     #%% Dispa-SET version boundary sector
     if dispaset_version == '2.5_BS':
         # config['BoundarySectorDemand'] = 137
-        config['BoundarySectorData'] = str(DST_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
+        config['BoundarySectorData'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
                                            'PtLCapacities.csv')
         # config['BoundarySectorNTC'] = 139
         # config['BoundarySectorInterconnections'] = 140
-        config['BSFlexibleDemand'] = str(DST_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
+        config['BSFlexibleDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
                                          'H2_demand.csv')
         # config['BSFlexibleSupply'] = 142
         # config['CostBoundarySectorSlack'] = 170
@@ -241,9 +241,9 @@ for i in range(1,max_loops+1):
     _ = ds.solve_GAMS(config['SimulationDirectory'], config['GAMS_folder'])
 
     # Load the simulation results:
-    inputs_mts[i], results_mts[i] = ds.get_sim_results(config, cache=False, inputs_file='Inputs_MTS.p',
+    inputs_mts[i], results_mts[i] = ds.get_sim_results(config['SimulationDirectory'], cache=False, inputs_file='Inputs_MTS.p',
                                                        results_file='Results_MTS.gdx')
-    inputs[i], results[i] = ds.get_sim_results(config, cache=False)
+    inputs[i], results[i] = ds.get_sim_results(config['SimulationDirectory'], cache=False)
 
     # %% Save DS results to pickle file
     ES_output = ES_folder / 'case_studies' / config_es['case_study'] / 'output'
