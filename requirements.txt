@@ -19,3 +19,5 @@ scipy
 shapely
 pyproj
 pyshp
+tqdm
+requests
