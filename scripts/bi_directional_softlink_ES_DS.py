@@ -104,7 +104,7 @@ max_loops = 4
 # %% ###################################
 ######## Soft-linking procedure ########
 ########################################
-for i in [max_loops]:
+for i in range(1,max_loops+1):
     config_es['case_study'] = case_study + '_loop_' + str(i)
 # for i in trange(max_loops, desc='Mapping', leave=True):
     print('loop number', i)

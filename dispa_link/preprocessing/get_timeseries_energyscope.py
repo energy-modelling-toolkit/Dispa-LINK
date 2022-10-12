@@ -64,8 +64,9 @@ def get_electricity_demand(es_outputs, td_df, drange, countries=['ES'], write_cs
         # Add all the electricity demands into a single one and assign proper date range
         total_load_value_es_input['Sum'] = -total_load_value_es_input.sum(axis=1)
         total_load_value_es_input = total_load_value_es_input.set_index(drange)
-        electricity[country] = total_load_value.values + total_load_value_es_input['Sum'].multiply(
+        electricity.loc[:,country] = total_load_value.values + total_load_value_es_input['Sum'].multiply(
             1 + grid_losses).values
+        electricity = pd.DataFrame(electricity[country])
 
     if write_csv:
         write_csv_files(file_name, electricity, 'TotalLoadValue', index=True, write_csv=True)
