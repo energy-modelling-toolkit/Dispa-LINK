@@ -79,9 +79,10 @@ ReservoirLevels = ['HPHS']
 # ---------------------------------------- DICO ----------------------------------------#
 # For the moment, the dico is in the file, but this will have to be read from a .txt file
 mapping = {}
+mapping['ES'] = {}
 
 # This dictionary is used to sort out wether a TECH is a PowerPlant, a CHP or a STO
-mapping['SORT'] = {u'CCGT': u'ELEC',
+mapping['ES']['SORT'] = {u'CCGT': u'ELEC',
                    u'CCGT_AMMONIA': u'ELEC',
                    u'COAL_US': u'ELEC',
                    u'COAL_IGCC': u'ELEC',
@@ -147,7 +148,7 @@ mapping['SORT'] = {u'CCGT': u'ELEC',
                    u'H2_STORAGE': u'P2GS_STO',
                    u'H2_ELECTROLYSIS': u'P2GS'}  # TO DO
 
-mapping['TECH'] = {u'CCGT': u'COMC',
+mapping['ES']['TECH'] = {u'CCGT': u'COMC',
                    u'CCGT_AMMONIA': u'COMC',
                    u'COAL_US': u'STUR',
                    u'COAL_IGCC': u'STUR',
@@ -220,7 +221,7 @@ mapping['TECH'] = {u'CCGT': u'COMC',
                    u'H2_STORAGE': u'',
                    u'H2_ELECTROLYSIS': u'P2GS'}  # TO DO
 
-mapping['FUEL'] = {u'CCGT': u'GAS',
+mapping['ES']['FUEL'] = {u'CCGT': u'GAS',
                    u'CCGT_AMMONIA': u'AMO',
                    u'COAL_IGCC': u'HRD',
                    u'COAL_US': u'HRD',
@@ -287,7 +288,7 @@ mapping['FUEL'] = {u'CCGT': u'GAS',
                    u'H2_STORAGE': u'HYD',
                    u'H2_ELECTROLYSIS': u'HYD'}  # TO DO
 
-mapping['RESOURCE'] = {u'BIODIESEL': u'BIODIESEL',
+mapping['ES']['RESOURCE'] = {u'BIODIESEL': u'BIODIESEL',
                        u'BIOETHANOL': u'BIOETHANOL',
                        u'CO2_ATM ': u'CO2_ATM',
                        u'CO2_CAPTURED': u'CO2_CAPTURED',
@@ -315,7 +316,7 @@ mapping['RESOURCE'] = {u'BIODIESEL': u'BIODIESEL',
                        u'WOOD': u'WOOD'}
 
 # DICO used to get efficiency of tech in layers_in_out
-mapping['FUEL_ES'] = {u'CCGT': u'GAS',
+mapping['ES']['FUEL_ES'] = {u'CCGT': u'GAS',
                       u'CCGT_AMMONIA': u'AMMONIA',
                       u'OCGT': u'GAS',
                       u'COAL_IGCC': u'COAL',
@@ -381,9 +382,12 @@ mapping['FUEL_ES'] = {u'CCGT': u'GAS',
                       u'SEASONAL_NG': u'',  # TO DO #STO ? Efficiency ?
                       u'SEASONAL_H2': u'',
                       u'H2_STORAGE': u'',
+                      u'OCGT_GAS': u'GAS',
+                      u'CCGT_GAS': u'GAS',
+                      u'STUR_GAS': u'GAS',
                       u'H2_ELECTROLYSIS': u'ELECTRICITY'}  # TO DO #STO ? Efficiency ?
 
-mapping['CHP_HEAT'] = {u'IND_COGEN_GAS': u'HEAT_HIGH_T',
+mapping['ES']['CHP_HEAT'] = {u'IND_COGEN_GAS': u'HEAT_HIGH_T',
                        u'IND_COGEN_WOOD': u'HEAT_HIGH_T',
                        u'IND_COGEN_WASTE': u'HEAT_HIGH_T',
                        u'DHN_COGEN_GAS': u'HEAT_LOW_T_DHN',
@@ -395,7 +399,7 @@ mapping['CHP_HEAT'] = {u'IND_COGEN_GAS': u'HEAT_HIGH_T',
                        u'DEC_ADVCOGEN_GAS': u'HEAT_LOW_T_DECEN',
                        u'DEC_ADVCOGEN_H2': u'HEAT_LOW_T_DECEN'}
 
-mapping['HEAT_ONLY_HEAT'] = {u'IND_BOILER_GAS': u'HEAT_HIGH_T',
+mapping['ES']['HEAT_ONLY_HEAT'] = {u'IND_BOILER_GAS': u'HEAT_HIGH_T',
                              u'IND_BOILER_WOOD': u'HEAT_HIGH_T',
                              u'IND_BOILER_WASTE': u'HEAT_HIGH_T',
                              u'IND_BOILER_OIL': u'HEAT_HIGH_T',
@@ -413,7 +417,7 @@ mapping['HEAT_ONLY_HEAT'] = {u'IND_BOILER_GAS': u'HEAT_HIGH_T',
                              u'DEC_THHP_GAS': u'HEAT_LOW_T_DECEN'
                              }
 
-mapping['P2HT_HEAT'] = {u'IND_DIRECT_ELEC': u'HEAT_HIGH_T',
+mapping['ES']['P2HT_HEAT'] = {u'IND_DIRECT_ELEC': u'HEAT_HIGH_T',
                         u'DHN_HP_ELEC': u'HEAT_LOW_T_DHN',
                         u'DEC_HP_ELEC': u'HEAT_LOW_T_DECEN',
                         u'DEC_DIRECT_ELEC': u'HEAT_LOW_T_DECEN'
@@ -421,7 +425,7 @@ mapping['P2HT_HEAT'] = {u'IND_DIRECT_ELEC': u'HEAT_HIGH_T',
 # u'TS_DEC_HP_ELEC': u''} - Thermal Storage : is P2HT techno ?
 
 # That dictionary could be automatize for DEC_P2HT - IS IT BETTER THOUGH ? - TO CHECK
-mapping['THERMAL_STORAGE'] = {u'DEC_DIRECT_ELEC': u'TS_DEC_DIRECT_ELEC',
+mapping['ES']['THERMAL_STORAGE'] = {u'DEC_DIRECT_ELEC': u'TS_DEC_DIRECT_ELEC',
                               u'DEC_HP_ELEC': u'TS_DEC_HP_ELEC',
                               u'DEC_THHP_GAS': u'TS_DEC_THHP_GAS',
                               u'DEC_COGEN_GAS': u'TS_DEC_COGEN_GAS',
@@ -433,10 +437,10 @@ mapping['THERMAL_STORAGE'] = {u'DEC_DIRECT_ELEC': u'TS_DEC_DIRECT_ELEC',
                               u'DEC_BOILER_OIL': u'TS_DEC_BOILER_OIL'}
 
 # That dictionary could be automatize for DEC_P2HT - IS IT BETTER THOUGH ? - TO CHECK
-mapping['P2GS_STORAGE'] = {u'H2_ELECTROLYSIS': u'H2_STORAGE'}
+mapping['ES']['P2GS_STORAGE'] = {u'H2_ELECTROLYSIS': u'H2_STORAGE'}
 
 # mapping of cvost of fuels
-mapping['FUEL_COST'] = {u'AMMONIA': u'PriceOfAmmonia',
+mapping['ES']['FUEL_COST'] = {u'AMMONIA': u'PriceOfAmmonia',
                         u'URANIUM': u'PriceOfNuclear',
                         u'COAL': u'PriceOfBlackCoal',
                         u'GAS': u'PriceOfGas',

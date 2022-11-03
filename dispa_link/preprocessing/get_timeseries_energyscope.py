@@ -64,7 +64,7 @@ def get_electricity_demand(es_outputs, td_df, drange, countries=['ES'], write_cs
         # Add all the electricity demands into a single one and assign proper date range
         total_load_value_es_input['Sum'] = -total_load_value_es_input.sum(axis=1)
         total_load_value_es_input = total_load_value_es_input.set_index(drange)
-        electricity.loc[:,country] = total_load_value.values + total_load_value_es_input['Sum'].multiply(
+        electricity.loc[:, country] = total_load_value.values + total_load_value_es_input['Sum'].multiply(
             1 + grid_losses).values
         electricity = pd.DataFrame(electricity[country])
 
@@ -92,11 +92,6 @@ def get_heat_demand(es_outputs, td_df, drange, countries=None, write_csv=True, f
         dhn_heat_es_input = assign_td(es_outputs['low_t_dhn_Layers'], td_df) * 1000  # GW to MW
         decen_heat_es_input = assign_td(es_outputs['low_t_decen_Layers'], td_df) * 1000  # GW to MW
 
-        # %% sum all technologies of same layer
-        # ind_heat_es = ind_heat_es_input[ind_heat_tech].sum(axis=1)
-        # dhn_heat_es = dhn_heat_es_input[dhn_heat_tech].sum(axis=1)
-        # decen_heat_es = decen_heat_es_input[decen_heat_tech].sum(axis=1)
-
         ind_heat_es = -ind_heat_es_input.loc[:, 'END_USE']
         dhn_heat_es = -dhn_heat_es_input.loc[:, 'END_USE']
         decen_heat_es = -decen_heat_es_input.loc[:, 'END_USE']
@@ -109,8 +104,9 @@ def get_heat_demand(es_outputs, td_df, drange, countries=None, write_csv=True, f
         heat_es_input.set_index(drange, inplace=True)
 
     # %% export to csv file
-    if write_csv:
-        write_csv_files(file_name, heat_es_input, 'HeatDemand', index=True, write_csv=True, heating=True)
+    if dispaset_version == '2.5':
+        if write_csv:
+            write_csv_files(file_name, heat_es_input, 'HeatDemand', index=True, write_csv=True, heating=True)
 
     return heat_es_input
 
@@ -134,8 +130,8 @@ def get_h2_demand(h2_layer, td_df, drange, write_csv=True, file_name='H2_demand'
     if dispaset_version == '2.5':
         h2_max_demand = pd.DataFrame(h2_ts.max(), columns=['Capacity'])
     if write_csv:
-        write_csv_files(file_name, h2_ts, 'H2_demand', index=True, write_csv=True)
         if dispaset_version == '2.5':
+            write_csv_files(file_name, h2_ts, 'H2_demand', index=True, write_csv=True)
             write_csv_files('PtLCapacities', h2_max_demand, 'H2_demand', index=True, write_csv=True)
     return h2_ts
 
@@ -216,8 +212,8 @@ def get_availability_factors(es_outputs, drange, countries=['ES'], write_csv=Tru
         # %% Compute availability factors
         availability_factors_ds = []
         for i in af_es_df:
-            if i in mapping['TECH']:
-                availability_factors_ds.append(mapping['TECH'][i])
+            if i in mapping['ES']['TECH']:
+                availability_factors_ds.append(mapping['ES']['TECH'][i])
         availability_factors_ds_df = af_es_df.set_axis(availability_factors_ds, axis=1, inplace=False)
         for i in availability_factors_ds:
             availability_factors_ds_df.loc[availability_factors_ds_df[i] < 0, i] = 0
@@ -229,8 +225,8 @@ def get_availability_factors(es_outputs, drange, countries=['ES'], write_csv=Tru
             inflows_ds = []
             inflows_es_df = es_outputs['timeseries'].loc[:, ['Hydro_dam']]
             for i in inflows_es_df:
-                if i in mapping['TECH']:
-                    inflows_ds.append(mapping['TECH'][i])
+                if i in mapping['ES']['TECH']:
+                    inflows_ds.append(mapping['ES']['TECH'][i])
             inflow_timeseries[country] = inflows_es_df.set_axis(inflows_ds, axis=1)
         except:
             logging.error('Hydro_dam time-series not present in ES')

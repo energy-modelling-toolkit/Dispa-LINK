@@ -33,14 +33,14 @@ data_folder = ES_folder / 'Data' / str(target_year)
 ES_path = ES_folder / 'energyscope' / 'STEP_2_Energy_Model'
 step1_output = ES_folder / 'energyscope' / 'STEP_1_TD_selection' / 'TD_of_days.out'
 
-dispaset_version = '2.5'  # 2.5 or 2.5_BS
+dispaset_version = '2.5_BS'  # 2.5 or 2.5_BS
 
 # %% ###################################
 ########### Editable inputs ############
 ########################################
 separator = ';'
-scenario = 37000
-case_study = str(scenario) + '_ELEImp=0_WIND_ONOFFSHORE=70_LOCALAMONIA_NUC=4_CURT=0'
+scenario = 12500
+case_study = dispaset_version + '_' + str(scenario) + '_ELEImp=0_WIND_ONOFFSHORE=70_LOCALAMONIA_NUC=4_CURT=0'
 initialize_ES = False
 
 # EnergyScope inputs
@@ -99,7 +99,7 @@ LL, Curtailment = pd.DataFrame(), pd.DataFrame()
 iteration = {}
 
 # Assign soft-linking iteration parameters
-max_loops = 4
+max_loops = 5
 
 # %% ###################################
 ######## Soft-linking procedure ########
@@ -191,6 +191,10 @@ for i in range(max_loops):
                                                     countries=['ES'], file_name='2015_ES_th',
                                                     dispaset_version=dispaset_version)
 
+    if dispaset_version == '2.5_BS':
+        ds_inputs['BoundarySectorDemand'] = pd.concat([ds_inputs['HeatDemand'][i], ds_inputs['H2Demand'][i]], axis=1)
+        dl.write_csv_files('BoundarySectorDemand', ds_inputs['BoundarySectorDemand'], 'BoundarySectorDemand', index=True, write_csv=True)
+
     # %% Assign storage levels
     ds_inputs['ReservoirLevels'][i] = dl.get_soc(es_outputs, config_es, config_link['DateRange'])
 
@@ -200,18 +204,21 @@ for i in range(max_loops):
     # Load the appropriate configuration file (2.5 or boundary sector version)
     if dispaset_version == '2.5':
         config = ds.load_config('../ConfigFiles/Config_EnergyScope.xlsx')
+        # config['default']['CostCurtailment'] = abs(es_outputs['Curtailment_cost'].loc['Curtailment_cost',
+        #                                                                               'Curtailment_cost'] * 1000)
+        config['default']['CostCurtailment'] = 0
     if dispaset_version == '2.5_BS':
         config = ds.load_config('../ConfigFiles/Config_EnergyScope_BS.xlsx')
+        config['default']['CostCurtailment'] = 0
     # Assign new input csv files if needed
     config['ReservoirLevels'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'ReservoirLevels' / '##' /
                                     'ReservoirLevels.csv')
 
     config['SimulationDirectory'] = str(DL_folder / 'Simulations' / str(case_study + '_loop_' + str(i)))
     config['default']['PriceOfCO2'] = abs(es_outputs['CO2_cost'].loc['CO2_cost', 'CO2_cost'] * 1000)
-    config['default']['CostCurtailment'] = abs(es_outputs['Curtailment_cost'].loc['Curtailment_cost',
-                                                                                  'Curtailment_cost'] * 1000)
-    for j in dl.mapping['FUEL_COST']:
-        config['default'][dl.mapping['FUEL_COST'][j]] = ds_inputs['Costs'][i].loc[j] * 1000
+
+    for j in dl.mapping['ES']['FUEL_COST']:
+        config['default'][dl.mapping['ES']['FUEL_COST'][j]] = ds_inputs['Costs'][i].loc[j] * 1000
 
     #%% Dispa-SET version 2.5
     if dispaset_version == '2.5':
@@ -222,17 +229,22 @@ for i in range(max_loops):
         config['Outages'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'OutageFactor' / '##' /
                                 'OutageFactor.csv')
 
+
     #%% Dispa-SET version boundary sector
     if dispaset_version == '2.5_BS':
-        # config['BoundarySectorDemand'] = 137
-        config['BoundarySectorData'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
-                                           'PtLCapacities.csv')
+        config['SectorXDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'BoundarySectorDemand' /
+                                      'ES' / 'BoundarySectorDemand.csv')
+        config['HeatDemand'] = ''
+        config['BoundarySectorData'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'BoundarySectorInputs' /
+                                           'ES' / 'BoundarySectorInputs.csv')
         # config['BoundarySectorNTC'] = 139
         # config['BoundarySectorInterconnections'] = 140
-        config['BSFlexibleDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
+        config['SectorXFlexibleDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
                                          'H2_demand.csv')
-        # config['BSFlexibleSupply'] = 142
-        # config['CostBoundarySectorSlack'] = 170
+        # config['SectorXFlexibleSupply'] = 142
+        config['BoundarySectorMaxSpillage'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' /
+                                         'H2_demand.csv')
+        # config['CostXNotServed'] = 170
 
     # Build the simulation environment:
     SimData = ds.build_simulation(config)
@@ -276,7 +288,7 @@ for i in range(max_loops):
     LL = pd.concat([LL, results[i]['OutputShedLoad']], axis=1)
     Curtailment = pd.concat([Curtailment, results[i]['OutputCurtailedPower']], axis=1)
 
-    if (results[i]['OutputOptimizationCheck'].abs() > 0).any():
+    if not results[i]['OutputShedLoad'].empty:
         print('Another iteration required')
     else:
         print('Final convergence occurred in loop: ' + str(i) + '. Soft-linking is now complete')
@@ -355,12 +367,12 @@ aa['Total'] = aa.sum(axis=1)
 # Plots
 import pandas as pd
 
-rng = pd.date_range('2015-1-1', '2015-12-31', freq='H')
+rng = pd.date_range('2015-12-29', '2015-12-31-23:00', freq='H')
 # Generate country-specific plots
-ds.plot_zone(inputs[3], results[3], rng=rng, z_th='ES_DHN')
+ds.plot_zone(inputs[2], results[2], rng=rng)
 #
-# # Bar plot with the installed capacities in all countries:
-# cap = ds.plot_zone_capacities(inputs[2], results[2])
+# Bar plot with the installed capacities in all countries:
+cap = ds.plot_zone_capacities(inputs[3], results[3])
 #
 # # Bar plot with installed storage capacity
 # sto = ds.plot_tech_cap(inputs[2])
@@ -368,9 +380,9 @@ ds.plot_zone(inputs[3], results[3], rng=rng, z_th='ES_DHN')
 # # Violin plot for CO2 emissions
 # ds.plot_co2(inputs[3], results[3], figsize=(9, 6), width=0.9)
 #
-# # Bar plot with the energy balances in all countries:
-# GenPerZone = ds.plot_energy_zone_fuel(inputs[3], results[3], ds.get_indicators_powerplant(inputs[3], results[3]))
-#
+# Bar plot with the energy balances in all countries:
+GenPerZone = ds.plot_energy_zone_fuel(inputs[2], results[2], ds.get_indicators_powerplant(inputs[2], results[2]))
+
 # # Analyse the results for each country and provide quantitative indicators:
 # r = ds.get_result_analysis(inputs[0], results[0])
 #

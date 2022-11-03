@@ -312,7 +312,10 @@ def sto_dhn(tech_names, TYPE, numTD, assets, layer_t, td_hourly, country=None): 
     integ_dhn_sto = dhn_interm2.sum(axis=1)
 
     for i in tech_all:
-        dhn_sto.at[0, i] = f_ts_dhn * dhn_interm2.loc[0, i] / (integ_dhn_sto[0])
+        if integ_dhn_sto[0] == 0:
+            dhn_sto.at[0, i] = np.nan
+        else:
+            dhn_sto.at[0, i] = f_ts_dhn * dhn_interm2.loc[0, i] / (integ_dhn_sto[0])
 
     return dhn_sto
 

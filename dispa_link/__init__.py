@@ -3,6 +3,7 @@ from .search import *
 from .constants import *
 from .preprocessing.get_timeseries_energyscope import *
 from .preprocessing.get_capacities_energyscope import get_capacities_from_es
+from .dispa_link_functions import *
 
 def get_git_revision_tag():
     """Get version of Dispa-LINK used for this run. tag + commit hash"""

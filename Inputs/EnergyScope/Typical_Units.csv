@@ -2,11 +2,11 @@
 0,,,,*,*,1,0,0,0.02,0.02,0,0,0,0,1,0,0,,,,,,,,,,,,,,,
 1000000,Absorption HP,1,1,ABHP,GAS,1,0,0,1,1,0,0,0,0,0,0,0,,,,,1.8,10,0.01,0.01,,,,,,,
 1000000,Air source HP,1,1,ASHP,AIR,1,0,0,0.2,0.2,0,0,0,0,0,0,0,,,,,3,10,0.01,0.01,,,,,,,
-400,HR_BATs,2016,HR,BATS,OTH,0.95,0,0,1,1,0,0,0,0,0.95,0,0,,,,,,,,,0,0,0,0.95,,,
-1,HR_EVs,2016,HR,BEVS,OTH,0.95,0,0,1,1,0,0,0,0,0.95,0,0,,,,,,,,,0,0,0,0.95,,,
+1000000,HR_BATs,2016,HR,BATS,OTH,0.95,0,0,1,1,0,0,0,0,0.95,0,0,,,,,,,,,0,0,0,0.95,,,
+1000000,HR_EVs,2016,HR,BEVS,OTH,0.95,0,0,1,1,0,0,0,0,0.95,0,0,,,,,,,,,0,0,0,0.95,,,
 40,Rodenhuize,2009,BE,COMC,BIO,0.37,4,2,0.011111111,0.011111111,60,0,0.5,0.35,0.57,0,0,Extraction,1.07,0,,,,,,,,,,,,
-722.7,Amercoeur,2010,BE,COMC,GAS,51.9,2,2,0.026315789,0.066666667,60,0,0.5,0.169942197,0.57,0,0.353,Extraction,0.95,0,,,,,,,,,,,,https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&ved=2ahUKEwjD5Y3jq5b5AhVelP0HHb1uBG4QFnoECA4QAQ&url=https%3A%2F%2Fassets.publishing.service.gov.uk%2Fgovernment%2Fuploads%2Fsystem%2Fuploads%2Fattachment_data%2Ffile%2F929283%2Fstart-up-shut-down-times-power-ccus-main-report.pdf&usg=AOvVaw3xUDIQJdv6VKUJ9PoF30op
-722.7,Amercoeur,2010,BE,COMC,GAS,51.9,2,2,0.026315789,0.066666667,60,0,0.5,0.169942197,0.57,0,0.353,back-pressure,0.95,0,,,,,,,,,,,,
+722.7,Amercoeur,2010,BE,COMC,GAS,0.519,2,2,0.026315789,0.066666667,60,0,0.5,0.169942197,0.57,0,0.353,Extraction,0.95,0,,,,,,,,,,,,https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&ved=2ahUKEwjD5Y3jq5b5AhVelP0HHb1uBG4QFnoECA4QAQ&url=https%3A%2F%2Fassets.publishing.service.gov.uk%2Fgovernment%2Fuploads%2Fsystem%2Fuploads%2Fattachment_data%2Ffile%2F929283%2Fstart-up-shut-down-times-power-ccus-main-report.pdf&usg=AOvVaw3xUDIQJdv6VKUJ9PoF30op
+722.7,Amercoeur,2010,BE,COMC,GAS,0.519,2,2,0.026315789,0.066666667,60,0,0.5,0.169942197,0.57,0,0.353,back-pressure,0.95,0,,,,,,,,,,,,
 80,Ammonia CCGT,2010,BE,COMC,AMO,0.57,4,2,0.016666667,0.016666667,60,0,0.5,0.35,0.57,0,0.353,Extraction,0.95,0,,,,,,,,,,,,
 1000000,Geo thermal,2,1,GETH,GEO,0.95,0,0,1,1,0,0,0,0,0,0,0,,,,,,,,,,,,,,,
 1000000,Ground source HP,1,1,GSHP,GEO,1,0,0,1,1,0,0,0,0,0,0,0,,,,,2.7,10,0.01,0.01,,,,,,,
