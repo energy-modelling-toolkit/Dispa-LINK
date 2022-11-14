@@ -33,44 +33,18 @@ def get_electricity_demand(es_outputs, td_df, drange, countries=['ES'], write_cs
     :return:            Electricity demand
     """
 
+    # Convert TD to hours
+    electricity_layers = assign_td(es_outputs['electricity_layers'], td_df) * 1000
+    demand_cols = ['ELEC_EXPORT', 'TRAMWAY_TROLLEY', 'TRAIN_PUB', 'TRAIN_FREIGHT', 'TRUCK_ELEC',
+                   'BIO_HYDROLYSIS', 'PYROLYSIS_TO_LFO', 'PYROLYSIS_TO_FUELS', 'ATM_CCS', 'INDUSTRY_CCS',
+                   'SYN_METHANOLATION', 'BIOMASS_TO_METHANOL', 'HABER_BOSCH', 'OIL_TO_HVC', 'GAS_TO_HVC',
+                   'BIOMASS_TO_HVC', 'END_USE']
+    grid_losses = grid_losses_list[countries.index('ES')]
     # Create final dataframe
-    electricity = pd.DataFrame(index=drange, columns=countries)
-
-    for country in countries:
-        # %% read base and variable loads
-        el_demand_baseload = es_outputs['demands'].loc[0, 'HOUSEHOLDS'] + es_outputs['demands'].loc[0, 'SERVICES'] + \
-                             es_outputs['demands'].loc[0, 'INDUSTRY']
-        el_demand_variable = es_outputs['demands'].loc[1, 'HOUSEHOLDS'] + es_outputs['demands'].loc[1, 'SERVICES'] + \
-                             es_outputs['demands'].loc[1, 'INDUSTRY']
-        total_load_value = pd.DataFrame(es_outputs['timeseries'].loc[:, 'Electricity (%_elec)'] * el_demand_variable +
-                                        el_demand_baseload / len(es_outputs['timeseries']))
-        total_load_value.set_index(drange, inplace=True)
-        # %% Compute the potential extra demand
-        extra_elec_demand = 0
-        extra_demand_tech = list()
-        for y in elec_mobi_tech:
-            elec = search_year_balance(es_outputs['year_balance'], y, 'ELECTRICITY')  # TO CHECK
-            if elec != 0:
-                extra_demand_tech.append(y)
-                extra_elec_demand = extra_elec_demand - elec  # [GWh]
-
-        # %% Consider grid losses
-        grid_losses = grid_losses_list[countries.index(country)]
-        factor = (search_year_balance(es_outputs['year_balance'], 'END_USES_DEMAND', 'ELECTRICITY') -
-                  extra_elec_demand * grid_losses) / (total_load_value.sum())
-        # Increase total load by grid losses
-        total_load_value = total_load_value.multiply(factor) * 1000
-        total_load_value_es_input = assign_td(es_outputs['electricity_layers'], td_df) * 1000  # GW to MW
-        # Add all the electricity demands into a single one and assign proper date range
-        total_load_value_es_input['Sum'] = -total_load_value_es_input.sum(axis=1)
-        total_load_value_es_input = total_load_value_es_input.set_index(drange)
-        electricity.loc[:, country] = total_load_value.values + total_load_value_es_input['Sum'].multiply(
-            1 + grid_losses).values
-        electricity = pd.DataFrame(electricity[country])
-
+    electricity = pd.DataFrame(-electricity_layers.loc[:, demand_cols].sum(axis=1).values * (1 + grid_losses),
+                               index=drange, columns=countries)
     if write_csv:
         write_csv_files(file_name, electricity, 'TotalLoadValue', index=True, write_csv=True)
-
     return electricity
 
 
@@ -111,29 +85,30 @@ def get_heat_demand(es_outputs, td_df, drange, countries=None, write_csv=True, f
     return heat_es_input
 
 
-def get_h2_demand(h2_layer, td_df, drange, write_csv=True, file_name='H2_demand', dispaset_version='2.5'):
+def get_x_demand(X_layer, td_df, drange, write_csv=True, file_name='H2_demand', dispaset_version='2.5', columns=[],
+                 layer_name=''):
     """
     Get h2 demand from ES and convert it into DS demand timeseries
-    :param h2_layer:    H2 inputs layer
+    :param X_layer:    H2 inputs layer
     :param td_df:       typical day assignment
     :param write_csv:   write csv files
     :return:            h2 demand timeseries
     """
-    h2_layer = clean_blanks(h2_layer, idx=False)
-    if any(item in ['H2_STORAGE_Pin', 'H2_STORAGE_Pout'] for item in h2_layer.columns):
-        h2_layer.drop(columns=['H2_STORAGE_Pin', 'H2_STORAGE_Pout'], inplace=True)
+    X_layer = clean_blanks(X_layer, idx=False)
+    X_layer = X_layer.dropna(axis=1, how='all')
+    X_layer = X_layer.loc[:, columns]
     # computing consumption of H2
     # TODO automatise name zone assignment
-    h2_td = pd.DataFrame(-h2_layer[h2_layer < 0].sum(axis=1), columns=['ES_H2'])
-    h2_ts = assign_td(h2_td, td_df) * 1000  # Convert to MW
-    h2_ts.set_index(drange, inplace=True)
+    x_td = pd.DataFrame(X_layer.sum(axis=1), columns=[layer_name])
+    x_ts = assign_td(x_td, td_df) * 1000  # Convert to MW
+    x_ts.set_index(drange, inplace=True)
     if dispaset_version == '2.5':
-        h2_max_demand = pd.DataFrame(h2_ts.max(), columns=['Capacity'])
+        x_max_demand = pd.DataFrame(x_ts.max(), columns=['Capacity'])
     if write_csv:
         if dispaset_version == '2.5':
-            write_csv_files(file_name, h2_ts, 'H2_demand', index=True, write_csv=True)
-            write_csv_files('PtLCapacities', h2_max_demand, 'H2_demand', index=True, write_csv=True)
-    return h2_ts
+            write_csv_files(file_name, x_ts, 'H2_demand', index=True, write_csv=True)
+            write_csv_files('PtLCapacities', x_max_demand, 'H2_demand', index=True, write_csv=True)
+    return x_ts
 
 
 def get_outage_factors(config_es, es_outputs, local_res, td_df, drange, write_csv=True):
@@ -240,3 +215,107 @@ def get_availability_factors(es_outputs, drange, countries=['ES'], write_csv=Tru
                                 country=country, inflows=True)
 
     return res_timeseries
+
+
+def get_ev_demand(es_outputs, td_df, ds_inputs, drange, countries=['ES'], write_csv=True, file_name='EV_Load'):
+    """
+    Compute electricity demand for electric vehicles and convert it to dispaset readable format, i.e. csv time series
+    :param es_outputs:  EnergyScope outputs
+    :param td_df:       Typical day dataframe
+    :param drange:      Date range
+    :param countries:   Countries to apply the mapping function on
+    :param write_csv:   Bool for creating csv file True/False
+    :param file_name:   Name of the csv file
+    :return:            ev_demand
+    """
+    electricity_layers = assign_td(es_outputs['electricity_layers'], td_df) * 1000
+    demand_cols = ['CAR_PHEV', 'CAR_BEV']
+    ev_cols = ['ES_PHEV_BATT', 'ES_BEV_BATT']
+    ev_scaled_demand = pd.DataFrame()
+    for ev in ev_cols:
+        if ev == 'ES_PHEV_BATT':
+            search = 'CAR_PHEV'
+        else:
+            search = 'CAR_BEV'
+        if not ds_inputs[0][ds_inputs[0]['Unit'] == ev].empty:
+            ev_techs = ds_inputs[0].loc[ds_inputs[0]['Unit'].isin([ev]), 'PowerCapacity']
+            ev_scaled_demand[ev] = -electricity_layers.loc[:, search].values / ev_techs.values
+        else:
+            ev_scaled_demand[ev] = -electricity_layers.loc[:, search]
+
+    ev_demand = pd.DataFrame(ev_scaled_demand.values, index=drange, columns=['ES_PHEV_BATT', 'ES_BEV_BATT'])
+
+    if write_csv:
+        write_csv_files(file_name, ev_demand, 'TotalLoadValue', index=True, write_csv=True)
+
+    return ev_demand
+
+
+def merge_timeseries_x(ds_inputs, df, td_df, drange, dispaset_version, i):
+    """
+    Merge all the supply demand time-series into a single csv file
+    :param ds_inputs:           ds_inputs dictionary
+    :param df:                  Energy Scope output layers
+    :param td_df:               Typical day to hourly dataframe
+    :param drange:              Date range
+    :param dispaset_version:    Dispaset version
+    :return:                    populated ds_inputs dictionary
+    """
+    # Assign fixed demands in Sector X
+    ds_inputs['XFixDemand'][i] = pd.concat(
+        [-get_x_demand(df['h2_layer'], td_df, drange, dispaset_version=dispaset_version,
+                       columns=common['ES']['h2_fix_dem'], layer_name='ES_H2'),
+         -get_x_demand(df['ammonia_layer'], td_df, drange,
+                       dispaset_version=dispaset_version,
+                       columns=common['ES']['ammonia_fix_dem'], layer_name='ES_AMO'),
+         # -get_x_demand(df['gas_layer'], td_df, drange,
+         #               dispaset_version=dispaset_version,
+         #               columns=common['ES']['gas_fix_dem'], layer_name='ES_GAS'),
+         -get_x_demand(df['high_t_Layers'], td_df, drange,
+                       dispaset_version=dispaset_version,
+                       columns=common['ES']['ind_fix_dem'], layer_name='ES_IND'),
+         -get_x_demand(df['low_t_dhn_Layers'], td_df, drange,
+                       dispaset_version=dispaset_version,
+                       columns=common['ES']['dhn_fix_dem'], layer_name='ES_DHN'),
+         -get_x_demand(df['low_t_decen_Layers'], td_df, drange,
+                       dispaset_version=dispaset_version,
+                       columns=common['ES']['dec_fix_dem'], layer_name='ES_DEC')],
+        axis=1)
+    # Assign Variable Demands in Sector X
+    ds_inputs['XVarDemand'][i] = pd.concat([
+        # -get_x_demand(df['gas_layer'], td_df,
+        #               drange,
+        #               dispaset_version=dispaset_version,
+        #               columns=common['ES']['gas_var_dem'],
+        #               layer_name='ES_GAS'),
+        -get_x_demand(df['high_t_Layers'], td_df,
+                      drange,
+                      dispaset_version=dispaset_version,
+                      columns=common['ES']['ind_var_dem'],
+                      layer_name='ES_IND')], axis=1)
+    # Assign fixed supply in Sector X
+    ds_inputs['XFixSupply'][i] = pd.concat(
+        [get_x_demand(df['h2_layer'], td_df, drange, dispaset_version=dispaset_version,
+                      columns=common['ES']['h2_fix_sup'], layer_name='ES_H2'),
+         get_x_demand(df['ammonia_layer'], td_df, drange,
+                      dispaset_version=dispaset_version,
+                      columns=common['ES']['ammonia_fix_sup'], layer_name='ES_AMO'),
+         # get_x_demand(df['gas_layer'], td_df, drange,
+         #              dispaset_version=dispaset_version,
+         #              columns=common['ES']['gas_fix_sup'], layer_name='ES_GAS'),
+         get_x_demand(df['low_t_dhn_Layers'], td_df, drange,
+                      dispaset_version=dispaset_version,
+                      columns=common['ES']['dhn_fix_sup'], layer_name='ES_DHN')],
+        axis=1)
+    # Assign variable supply in Sector X
+    ds_inputs['XVarSupply'][i] = pd.concat(
+        [get_x_demand(df['h2_layer'], td_df, drange, dispaset_version=dispaset_version,
+                      columns=common['ES']['h2_var_sup'], layer_name='ES_H2'),
+         get_x_demand(df['ammonia_layer'], td_df, drange,
+                      dispaset_version=dispaset_version,
+                      columns=common['ES']['ammonia_var_sup'], layer_name='ES_AMO'),
+         # get_x_demand(df['gas_layer'], td_df, drange,
+         #              dispaset_version=dispaset_version,
+         #              columns=common['ES']['gas_var_sup'], layer_name='ES_GAS')
+         ], axis=1)
+    return ds_inputs

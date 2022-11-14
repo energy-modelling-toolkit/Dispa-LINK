@@ -17,12 +17,11 @@ input_PP_folder = '../' + input_PP_folder_fromPrepare  # input file = PowerPlant
 
 # Define constants
 n_TD = 12  # Enter the number of TD specified in EnergyScope
-countries = list(['BE'])  # ,'CH','FR'])                              #Enter countries studied
-# perc_dhn_list = list([0.02])#, 0.37, 0.37])                        #Percentage of LT Heat provided by DHN in EnergyScope
-DHN_Prod_losses_list = list(
-    [0.05])  # , 0.05, 0.05])                 #Percentage of DHN LT heat production losses in EnergyScope
+countries = list(['BE'])  # ,'CH','FR'])                   #Enter countries studied
+# perc_dhn_list = list([0.02])#, 0.37, 0.37])              #Percentage of LT Heat provided by DHN in EnergyScope
+DHN_Prod_losses_list = list([0.05])  # , 0.05, 0.05])      #Percentage of DHN LT heat production losses in EnergyScope
 DHN_Sto_losses_list = list([0.0000606])  # , 0.0000606, 0.0000606])
-grid_losses_list = list([0.047])  # , 0.047, 0.047])                  #Percentage of elec grid losses in EnergyScope
+grid_losses_list = list([0.047])  # , 0.047, 0.047])       #Percentage of elec grid losses in EnergyScope
 
 # List of ES output files
 ES_txtfiles = ['Assets', 'Distri_E_stored', 'ElecLayers', 'H2Layers', 'HTLayers', 'YearBalance', 'cost_breakdown',
@@ -30,6 +29,8 @@ ES_txtfiles = ['Assets', 'Distri_E_stored', 'ElecLayers', 'H2Layers', 'HTLayers'
 
 # Lists of tech
 elec_mobi_tech = ['TRAMWAY_TROLLEY', 'TRAIN_PUB', 'TRAIN_FREIGHT']  # electro mobility technology
+ccs_tech = ['ATM_CCS', 'INDUSTRY_CCS']
+hvc_tech = ['BIOMASS_TO_HVC', 'GAS_TO_HVC', 'OIL_TO_HVC']
 p2h_tech = ['IND_DIRECT_ELEC', 'DHN_HP_ELEC', 'DEC_HP_ELEC', 'DEC_DIRECT_ELEC']
 chp_tech = ['IND_COGEN_GAS', 'IND_COGEN_WOOD', 'IND_COGEN_WASTE', 'DHN_COGEN_GAS', 'DHN_COGEN_WOOD', 'DHN_COGEN_WASTE',
             'DEC_COGEN_GAS', 'DEC_COGEN_OIL', 'DHN_COGEN_WET_BIOMASS', 'DEC_COGEN_GAS']
@@ -69,6 +70,35 @@ decen_heat_tech = ['DEC_HP_ELEC', 'DEC_DIRECT_ELEC', 'DEC_COGEN_GAS', 'DEC_COGEN
 ind_heat_tech = ['IND_DIRECT_ELEC', 'IND_COGEN_GAS', 'IND_COGEN_WOOD', 'IND_COGEN_WASTE', 'IND_BOILER_GAS',
                  'IND_BOILER_WASTE', 'IND_BOILER_COAL', 'IND_BOILER_WOOD', 'IND_BOILER_OIL', 'TS_HIGH_TEMP_Pin',
                  'TS_HIGH_TEMP_Pout']
+
+common = {}
+common['ES'] = {}
+common['ES']['h2_fix_dem'] = ['BUS_COACH_FC_HYBRIDH2', 'CAR_FUEL_CELL', 'TRUCK_FUEL_CELL', 'HABER_BOSCH',
+                              'SYN_METHANOLATION', 'SYN_METHANATION', 'END_USE']
+common['ES']['h2_var_dem'] = []
+common['ES']['h2_fix_sup'] = ['SMR', 'H2_BIOMASS', 'AMMONIA_TO_H2']
+common['ES']['h2_var_sup'] = ['H2', 'H2_RE']
+common['ES']['ammonia_fix_dem'] = ['AMMONIA_TO_H2', 'END_USE']
+common['ES']['ammonia_var_dem'] = []
+common['ES']['ammonia_fix_sup'] = ['HABER_BOSCH']
+common['ES']['ammonia_var_sup'] = ['AMMONIA', 'AMMONIA_RE']
+common['ES']['gas_fix_dem'] = ['BUS_COACH_CNG_STOICH', 'CAR_NG', 'BOAT_FREIGHT_NG', 'TRUCK_NG', 'GAS_TO_HVC', 'SMR', 'END_USE']
+common['ES']['gas_var_dem'] = ['METHANE_TO_METHANOL']
+common['ES']['gas_fix_sup'] = ['GASIFICATION_SNG', 'SYN_METHANATION', 'BIO_HYDROLYSIS']
+common['ES']['gas_var_sup'] = ['GAS', 'GAS_RE', 'BIOMETHANATION']
+common['ES']['ind_fix_dem'] = ['OIL_TO_HVC', 'BIOMASS_TO_HVC', 'AMMONIA_TO_H2', 'END_USE']
+common['ES']['ind_var_dem'] = ['METHANOL_TO_HVC']
+common['ES']['ind_fix_sup'] = []
+common['ES']['ind_var_sup'] = []
+common['ES']['dhn_fix_dem'] = ['END_USE']
+common['ES']['dhn_var_dem'] = []
+common['ES']['dhn_fix_sup'] = ['HABER_BOSCH', 'BIOMASS_TO_METHANOL', 'GASIFICATION_SNG', 'AMMONIA_TO_H2',
+                               'SYN_METHANOLATION', 'SYN_METHANATION']
+common['ES']['dhn_var_sup'] = []
+common['ES']['dec_fix_dem'] = ['END_USE']
+common['ES']['dec_var_dem'] = []
+common['ES']['dec_fix_sup'] = []
+common['ES']['dec_var_sup'] = []
 
 # Lists for AvailibilityFactors
 AvailFactors = ['PHOT', 'WTON', 'WTOF', 'HROR']  # Dispa-SET nomenclature
@@ -146,10 +176,11 @@ mapping['ES']['SORT'] = {u'CCGT': u'ELEC',
                    u'SEASONAL_NG': u'',  # TO DO
                    u'SEASONAL_H2': u'P2GS_STO',
                    u'H2_STORAGE': u'P2GS_STO',
-                   u'H2_ELECTROLYSIS': u'P2GS'}  # TO DO
+                   u'H2_ELECTROLYSIS': u'P2GS',
+                   u'HABER_BOSCH': u'OTH'}  # TO DO
 
 mapping['ES']['TECH'] = {u'CCGT': u'COMC',
-                   u'CCGT_AMMONIA': u'COMC',
+                   u'CCGT_AMMONIA': u'COMCX',
                    u'COAL_US': u'STUR',
                    u'COAL_IGCC': u'STUR',
                    u'PV': u'PHOT',
@@ -165,10 +196,10 @@ mapping['ES']['TECH'] = {u'CCGT': u'COMC',
                    u'WIND_OCapitalfCapitalfSHORE': u'WTOF',
                    u'WIND_OFFSHORE': u'WTOF',
                    u'WIND_ONSHORE': u'WTON',
-                   u'IND_COGEN_GAS': u'STUR',
+                   u'IND_COGEN_GAS': u'STURX',
                    u'IND_COGEN_WOOD': u'STUR',
                    u'IND_COGEN_WASTE': u'STUR',
-                   u'IND_BOILER_GAS': u'HOBO',
+                   u'IND_BOILER_GAS': u'HOBOX',
                    u'IND_BOILER_WOOD': u'HOBO',
                    u'IND_BOILER_OIL': u'HOBO',
                    u'IND_BOILER_COAL': u'HOBO',
@@ -179,18 +210,18 @@ mapping['ES']['TECH'] = {u'CCGT': u'COMC',
                    u'DHN_COGEN_WOOD': u'COMC',
                    u'DHN_COGEN_WASTE': u'STUR',
                    u'DHN_COGEN_WET_BIOMASS': u'COMC',
-                   u'DHN_BOILER_GAS': u'HOBO',
+                   u'DHN_BOILER_GAS': u'HOBOX',
                    u'DHN_BOILER_WOOD': u'HOBO',
                    u'DHN_BOILER_OIL': u'HOBO',
                    u'DHN_DEEP_GEO': u'GETH',
                    u'DHN_SOLAR': u'SOTH',
                    u'DEC_HP_ELEC': u'ASHP',  # TO CHECK : HP = Heat Pump ?
                    u'DEC_THHP_GAS': u'ABHP',
-                   u'DEC_COGEN_GAS': u'GTUR',
+                   u'DEC_COGEN_GAS': u'GTURX',
                    u'DEC_COGEN_OIL': u'GTUR',
                    u'DEC_ADVCOGEN_GAS': u'COMC',
                    u'DEC_ADVCOGEN_H2': u'SOFC',
-                   u'DEC_BOILER_GAS': u'HOBO',
+                   u'DEC_BOILER_GAS': u'HOBOX',
                    u'DEC_BOILER_WOOD': u'HOBO',
                    u'DEC_BOILER_OIL': u'HOBO',
                    u'DEC_SOLAR': u'SOTH',
@@ -214,12 +245,13 @@ mapping['ES']['TECH'] = {u'CCGT': u'COMC',
                    u'TS_DEC_BOILER_WOOD': u'THMS',
                    u'TS_DEC_BOILER_OIL': u'THMS',
                    u'TS_DHN_DAILY': u'THMS',  # TO DO
-                   u'TS_DHN_SEASONAL': u'THMS',
-                   u'TS_HIGH_TEMP': u'THMS',# TO DO
+                   u'TS_DHN_SEASONAL': u'',
+                   u'TS_HIGH_TEMP': u'',# TO DO
                    u'SEASONAL_NG': u'',  # TO DO
                    u'SEASONAL_H2': u'',
                    u'H2_STORAGE': u'',
-                   u'H2_ELECTROLYSIS': u'P2GS'}  # TO DO
+                   u'H2_ELECTROLYSIS': u'P2GS',
+                   u'HABER_BOSCH': u''}
 
 mapping['ES']['FUEL'] = {u'CCGT': u'GAS',
                    u'CCGT_AMMONIA': u'AMO',
@@ -281,12 +313,13 @@ mapping['ES']['FUEL'] = {u'CCGT': u'GAS',
                    u'TS_DEC_BOILER_WOOD': u'THE',
                    u'TS_DEC_BOILER_OIL': u'THE',
                    u'TS_DHN_DAILY': u'THE',  # TO DO
-                   u'TS_DHN_SEASONAL': u'THE',  # TO DO
-                   u'TS_HIGH_TEMP': u'THE',
+                   u'TS_DHN_SEASONAL': u'',  # TO DO
+                   u'TS_HIGH_TEMP': u'',
                    u'SEASONAL_NG': u'GAS',  # TO DO
                    u'SEASONAL_H2': u'HYD',
                    u'H2_STORAGE': u'HYD',
-                   u'H2_ELECTROLYSIS': u'HYD'}  # TO DO
+                   u'H2_ELECTROLYSIS': u'HYD',
+                   u'HABER_BOSCH': u''}  # TO DO
 
 mapping['ES']['RESOURCE'] = {u'BIODIESEL': u'BIODIESEL',
                        u'BIOETHANOL': u'BIOETHANOL',
@@ -385,7 +418,8 @@ mapping['ES']['FUEL_ES'] = {u'CCGT': u'GAS',
                       u'OCGT_GAS': u'GAS',
                       u'CCGT_GAS': u'GAS',
                       u'STUR_GAS': u'GAS',
-                      u'H2_ELECTROLYSIS': u'ELECTRICITY'}  # TO DO #STO ? Efficiency ?
+                      u'H2_ELECTROLYSIS': u'ELECTRICITY',
+                      u'HABER_BOSCH': u'AMMONIA'}  # TO DO #STO ? Efficiency ?
 
 mapping['ES']['CHP_HEAT'] = {u'IND_COGEN_GAS': u'HEAT_HIGH_T',
                        u'IND_COGEN_WOOD': u'HEAT_HIGH_T',

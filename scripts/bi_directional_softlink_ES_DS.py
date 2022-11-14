@@ -11,6 +11,7 @@ import energyscope as es
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import enlopy as el
 
 import dispa_link as dl
 
@@ -40,8 +41,9 @@ dispaset_version = '2.5_BS'  # 2.5 or 2.5_BS
 ########################################
 separator = ';'
 scenario = 12500
-case_study = dispaset_version + '_' + str(scenario) + '_ELEImp=0_WIND_ONOFFSHORE=70_LOCALAMONIA_NUC=4_CURT=0'
+case_study = dispaset_version + '_' + str(scenario) + '_ELEImp=0_WIND_ONOFFSHORE=70_LOCALAMONIA_NUC=4_CURT=0_ENS=2k'
 initialize_ES = False
+run_loop = True
 
 # EnergyScope inputs
 config_es = {'case_study': case_study + '_loop_0', 'comment': 'Test with low emissions', 'run_ES': False,
@@ -53,272 +55,352 @@ ES_output = config_es['ES_folder'] / 'case_studies' / config_es['case_study'] / 
 # %% ####################################
 #### Update and Execute EnergyScope ####
 ########################################
-
-# Reading the data
-config_es['all_data'] = es.run_ES(config_es)
-# No electricity imports
-config_es['all_data']['Resources'].loc['ELECTRICITY', 'avail'] = 0
-config_es['all_data']['Resources'].loc['ELEC_EXPORT', 'avail'] = 0
-# Limited ammonia imports
-config_es['all_data']['Resources'].loc['AMMONIA', 'avail'] = 0
-config_es['all_data']['Resources'].loc['AMMONIA_RE', 'avail'] = 0
-# No CCGT_AMMONIA
-config_es['all_data']['Technologies'].loc['CCGT_AMMONIA', 'f_max'] = 1e15
-config_es['all_data']['Technologies'].loc['NUCLEAR', 'f_max'] = 4
-# config_es['all_data']['Technologies'].loc['CCGT', 'f_max'] = 10
-# Allow infinite PV
-config_es['all_data']['Technologies'].loc['PV', 'f_max'] = 1e15
-config_es['user_defined']['solar_area'] = 1e15
-config_es['user_defined']['curt_perc_cap'] = 0
-# Allow infinite WIND_ONSHORE
-config_es['all_data']['Technologies'].loc['WIND_ONSHORE', 'f_max'] = 70
-config_es['all_data']['Technologies'].loc['WIND_OFFSHORE', 'f_max'] = 70
-# Allow infinite PHS
-# config_es['all_data']['Technologies'].loc['PHS', 'f_max'] = 1e15
-# Change storage parameters
-config_es['all_data']['Storage_characteristics'].loc['H2_STORAGE', 'storage_charge_time'] = 6
-config_es['all_data']['Storage_characteristics'].loc['H2_STORAGE', 'storage_discharge_time'] = 2
-config_es['all_data']['Technologies'].loc['H2_STORAGE', 'c_inv'] = 3.66
-# Change prices
-config_es['all_data']['Resources'].loc['GAS', 'c_op'] = 0.2
-
-# Printing and running
-config_es['importing'] = False
-config_es['printing'] = True
-config_es['printing_td'] = True
-config_es['run_ES'] = True
-if initialize_ES:
+if run_loop:
+    # Reading the data
     config_es['all_data'] = es.run_ES(config_es)
+    # No electricity imports
+    config_es['all_data']['Resources'].loc['ELECTRICITY', 'avail'] = 0
+    config_es['all_data']['Resources'].loc['ELEC_EXPORT', 'avail'] = 0
+    # Limited ammonia imports
+    config_es['all_data']['Resources'].loc['AMMONIA', 'avail'] = 0
+    config_es['all_data']['Resources'].loc['AMMONIA_RE', 'avail'] = 0
+    # No CCGT_AMMONIA
+    config_es['all_data']['Technologies'].loc['CCGT_AMMONIA', 'f_max'] = 1e15
+    config_es['all_data']['Technologies'].loc['NUCLEAR', 'f_max'] = 4
+    # config_es['all_data']['Technologies'].loc['CCGT', 'f_max'] = 10
+    # Allow infinite PV
+    config_es['all_data']['Technologies'].loc['PV', 'f_max'] = 1e15
+    config_es['user_defined']['solar_area'] = 1e15
+    config_es['user_defined']['curt_perc_cap'] = 0
+    # Allow infinite WIND_ONSHORE
+    config_es['all_data']['Technologies'].loc['WIND_ONSHORE', 'f_max'] = 70
+    config_es['all_data']['Technologies'].loc['WIND_OFFSHORE', 'f_max'] = 70
+    # Allow infinite PHS
+    # config_es['all_data']['Technologies'].loc['PHS', 'f_max'] = 1e15
+    # Change storage parameters
+    config_es['all_data']['Storage_characteristics'].loc['H2_STORAGE', 'storage_charge_time'] = 6
+    config_es['all_data']['Storage_characteristics'].loc['H2_STORAGE', 'storage_discharge_time'] = 2
+    config_es['all_data']['Technologies'].loc['H2_STORAGE', 'c_inv'] = 3.66
+    # Change prices
+    config_es['all_data']['Resources'].loc['GAS', 'c_op'] = 0.2
 
-# %% Assign empty variables (to be populated inside the loop)
-ds_inputs = {'Capacities': dict(), 'Costs': dict(), 'ElectricityDemand': dict(), 'HeatDemand': dict(),
-             'H2Demand': dict(), 'OutageFactors': dict(), 'ReservoirLevels': dict(), 'AvailabilityFactors': dict()}
-inputs_mts, results_mts = dict(), dict()
-inputs, results, GWP_op, reserves, shed_load, Price_CO2 = dict(), dict(), dict(), dict(), dict(), dict()
-LL, Curtailment = pd.DataFrame(), pd.DataFrame()
-iteration = {}
+    # Printing and running
+    config_es['importing'] = False
+    config_es['printing'] = True
+    config_es['printing_td'] = True
+    config_es['run_ES'] = True
+    if initialize_ES:
+        config_es['all_data'] = es.run_ES(config_es)
 
-# Assign soft-linking iteration parameters
-max_loops = 5
+    # %% Assign empty variables (to be populated inside the loop)
+    ds_inputs = {'Capacities': dict(), 'Costs': dict(), 'ElectricityDemand': dict(), 'HeatDemand': dict(),
+                 'XFixDemand': dict(), 'XVarDemand': dict(), 'XFixSupply':dict(), 'XVarSupply':dict(),
+                 'OutageFactors': dict(), 'ReservoirLevels': dict(), 'AvailabilityFactors': dict(),
+                 'EVDemand': dict()}
+    inputs_mts, results_mts = dict(), dict()
+    inputs, results, GWP_op, reserves, shed_load, Price_CO2 = dict(), dict(), dict(), dict(), dict(), dict()
+    LL, Curtailment = pd.DataFrame(), pd.DataFrame()
+    iteration = {}
+    es_outputs = dict()
 
-# %% ###################################
-######## Soft-linking procedure ########
-########################################
-for i in range(max_loops):
-    config_es['case_study'] = case_study + '_loop_' + str(i)
-# for i in trange(max_loops, desc='Mapping', leave=True):
-    print('loop number', i)
-
-    # Dynamic Data - to be modified in a loop
-    # Compute the actual average annual emission factors for each resource
-    # TODO automate
-    GWP_op[i] = es.compute_gwp_op(config_es['data_folder'], ES_folder / 'case_studies' / config_es['case_study'])
-    GWP_op[i].to_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' / 'GWP_op.txt', sep='\t')
-
-    # %% Reading the ES outputs
-    es_outputs = es.read_outputs(config_es['case_study'], True, [])
-    es_outputs['GWP_op'] = GWP_op[i]
-    es_outputs['timeseries'] = pd.read_csv(config_es['data_folder'] / 'Time_series.csv', header=0, sep=separator)
-    es_outputs['demands'] = pd.read_csv(config_es['data_folder'] / 'Demand.csv', sep=separator)
-    es_outputs['layers_in_out'] = pd.read_csv(config_es['data_folder'] / 'Layers_in_out.csv', sep=separator,
-                                              index_col='param layers_in_out:')
-    es_outputs['storage_characteristics'] = pd.read_csv(config_es['data_folder'] / 'Storage_characteristics.csv',
-                                                        sep=separator, index_col='param :')
-    es_outputs['storage_eff_in'] = pd.read_csv(config_es['data_folder'] / 'Storage_eff_in.csv',
-                                               sep=separator, index_col='param storage_eff_in :')
-    es_outputs['storage_eff_out'] = pd.read_csv(config_es['data_folder'] / 'Storage_eff_out.csv',
-                                                sep=separator, index_col='param storage_eff_out:')
-    es_outputs['high_t_Layers'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
-                                              'hourly_data' / 'layer_HEAT_HIGH_T.txt', delimiter='\t', index_col=[0, 1])
-    es_outputs['low_t_decen_Layers'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
-                                                   'hourly_data' / 'layer_HEAT_LOW_T_DECEN.txt', delimiter='\t',
-                                                   index_col=[0, 1])
-    es_outputs['low_t_dhn_Layers'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
-                                                 'hourly_data' / 'layer_HEAT_LOW_T_DHN.txt', delimiter='\t',
-                                                 index_col=[0, 1])
-
-    # TODO update with new possibility of changing output folder
-    # Clean ES outputs i.e. remove blank spaces
-    es_outputs['assets'] = dl.clean_blanks(es_outputs['assets'])
-    es_outputs['year_balance'] = dl.clean_blanks(es_outputs['year_balance'])
-    es_outputs['layers_in_out'] = dl.clean_blanks(es_outputs['layers_in_out'])
-    es_outputs['storage_characteristics'] = dl.clean_blanks(es_outputs['storage_characteristics'])
-    es_outputs['storage_eff_in'] = dl.clean_blanks(es_outputs['storage_eff_in'])
-    es_outputs['storage_eff_out'] = dl.clean_blanks(es_outputs['storage_eff_out'])
-    es_outputs['high_t_Layers'] = dl.clean_blanks(es_outputs['high_t_Layers'], idx=False)
-    es_outputs['low_t_decen_Layers'] = dl.clean_blanks(es_outputs['low_t_decen_Layers'], idx=False)
-    es_outputs['low_t_dhn_Layers'] = dl.clean_blanks(es_outputs['low_t_dhn_Layers'], idx=False)
-
-    # transforming TD time series into yearly time series
-    td_df = dl.process_TD(td_final=pd.read_csv(config_es['step1_output'], header=None))
-
-    # %% compute fuel prices according to the use of RE vs NON-RE fuels
-    resources = config_es['all_data']['Resources']
-    df = es_outputs['year_balance'].loc[resources.index, es_outputs['year_balance'].columns.isin(list(resources.index))]
-    ds_inputs['Costs'][i] = (df.mul(resources.loc[:, 'c_op'], axis=0).sum(axis=0) /
-                             df.sum(axis=0)).fillna(resources.loc[:, 'c_op'])
-
-    # %% Compute availability factors and scaled inflows
-    ds_inputs['AvailabilityFactors'][i] = dl.get_availability_factors(es_outputs, config_link['DateRange'],
-                                                                      file_name_af='AF_2015_ES',
-                                                                      file_name_sif='IF_2015_ES')
-
-    # %% Compute electricity demand
-    es_outputs['electricity_layers'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
-                                                   'hourly_data' / 'layer_ELECTRICITY.txt', delimiter='\t',
-                                                   index_col=[0, 1])
-    ds_inputs['ElectricityDemand'][i] = dl.get_electricity_demand(es_outputs, td_df, config_link['DateRange'],
-                                                                  file_name='2015_ES')
-
-    # %% compute H2 yearly consumption and power capacity of electrolyser
-    es_outputs['h2_layer'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
-                                         'hourly_data' / 'layer_H2.txt', delimiter='\t', index_col=[0, 1])
-    ds_inputs['H2Demand'][i] = dl.get_h2_demand(es_outputs['h2_layer'], td_df, config_link['DateRange'],
-                                                dispaset_version=dispaset_version)
-
-    # %% Get capacities from ES, map them to DS with external typical unit database
-    typical_units = pd.read_csv(config_link['TypicalUnits'] / 'Typical_Units.csv')
-    ds_inputs['Capacities'][i] = dl.get_capacities_from_es(es_outputs, typical_units=typical_units, td_df=td_df,
-                                                           technology_threshold=0.1, dispaset_version=dispaset_version,
-                                                           config_link=config_link)  # TODO: remove really small technologies
-
-    # %% Assign outage factors for technologies that generate more than available
-    ds_inputs['OutageFactors'][i] = dl.get_outage_factors(config_es, es_outputs, drange=config_link['DateRange'],
-                                                          local_res=['WASTE', 'WOOD', 'WET_BIOMASS'], td_df=td_df)
-
-    # %% Compute heat demand for different heating layers
-    ds_inputs['HeatDemand'][i] = dl.get_heat_demand(es_outputs, td_df, config_link['DateRange'],
-                                                    countries=['ES'], file_name='2015_ES_th',
-                                                    dispaset_version=dispaset_version)
-
-    if dispaset_version == '2.5_BS':
-        ds_inputs['BoundarySectorDemand'] = pd.concat([ds_inputs['HeatDemand'][i], ds_inputs['H2Demand'][i]], axis=1)
-        dl.write_csv_files('BoundarySectorDemand', ds_inputs['BoundarySectorDemand'], 'BoundarySectorDemand', index=True, write_csv=True)
-
-    # %% Assign storage levels
-    ds_inputs['ReservoirLevels'][i] = dl.get_soc(es_outputs, config_es, config_link['DateRange'])
+    # Assign soft-linking iteration parameters
+    max_loops = 4
 
     # %% ###################################
-    ########## Execute Dispa-SET ##########
-    #######################################
-    # Load the appropriate configuration file (2.5 or boundary sector version)
-    if dispaset_version == '2.5':
-        config = ds.load_config('../ConfigFiles/Config_EnergyScope.xlsx')
-        # config['default']['CostCurtailment'] = abs(es_outputs['Curtailment_cost'].loc['Curtailment_cost',
-        #                                                                               'Curtailment_cost'] * 1000)
-        config['default']['CostCurtailment'] = 0
-    if dispaset_version == '2.5_BS':
-        config = ds.load_config('../ConfigFiles/Config_EnergyScope_BS.xlsx')
-        config['default']['CostCurtailment'] = 0
-    # Assign new input csv files if needed
-    config['ReservoirLevels'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'ReservoirLevels' / '##' /
-                                    'ReservoirLevels.csv')
+    ######## Soft-linking procedure ########
+    ########################################
+    for i in range(max_loops):
+        config_es['case_study'] = case_study + '_loop_' + str(i)
+        print('loop number', i)
 
-    config['SimulationDirectory'] = str(DL_folder / 'Simulations' / str(case_study + '_loop_' + str(i)))
-    config['default']['PriceOfCO2'] = abs(es_outputs['CO2_cost'].loc['CO2_cost', 'CO2_cost'] * 1000)
+        # Dynamic Data - to be modified in a loop
+        # Compute the actual average annual emission factors for each resource
+        # TODO automate
+        GWP_op[i] = es.compute_gwp_op(config_es['data_folder'], ES_folder / 'case_studies' / config_es['case_study'])
+        GWP_op[i].to_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' / 'GWP_op.txt', sep='\t')
 
-    for j in dl.mapping['ES']['FUEL_COST']:
-        config['default'][dl.mapping['ES']['FUEL_COST'][j]] = ds_inputs['Costs'][i].loc[j] * 1000
+        # %% Reading the ES outputs
+        es_outputs[i] = es.read_outputs(config_es['case_study'], True, [])
+        es_outputs[i]['GWP_op'] = GWP_op[i]
+        es_outputs[i]['timeseries'] = pd.read_csv(config_es['data_folder'] / 'Time_series.csv', header=0, sep=separator)
+        es_outputs[i]['demands'] = pd.read_csv(config_es['data_folder'] / 'Demand.csv', sep=separator)
+        es_outputs[i]['layers_in_out'] = pd.read_csv(config_es['data_folder'] / 'Layers_in_out.csv', sep=separator,
+                                                  index_col='param layers_in_out:')
+        es_outputs[i]['storage_characteristics'] = pd.read_csv(config_es['data_folder'] / 'Storage_characteristics.csv',
+                                                            sep=separator, index_col='param :')
+        es_outputs[i]['storage_eff_in'] = pd.read_csv(config_es['data_folder'] / 'Storage_eff_in.csv',
+                                                   sep=separator, index_col='param storage_eff_in :')
+        es_outputs[i]['storage_eff_out'] = pd.read_csv(config_es['data_folder'] / 'Storage_eff_out.csv',
+                                                    sep=separator, index_col='param storage_eff_out:')
+        es_outputs[i]['high_t_Layers'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
+                                                  'hourly_data' / 'layer_HEAT_HIGH_T.txt', delimiter='\t', index_col=[0, 1])
+        es_outputs[i]['low_t_decen_Layers'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
+                                                       'hourly_data' / 'layer_HEAT_LOW_T_DECEN.txt', delimiter='\t',
+                                                       index_col=[0, 1])
+        es_outputs[i]['low_t_dhn_Layers'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
+                                                     'hourly_data' / 'layer_HEAT_LOW_T_DHN.txt', delimiter='\t',
+                                                     index_col=[0, 1])
 
-    #%% Dispa-SET version 2.5
-    if dispaset_version == '2.5':
-        config['H2FlexibleDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
-                                         'H2_demand.csv')
-        config['H2FlexibleCapacity'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
-                                           'PtLCapacities.csv')
-        config['Outages'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'OutageFactor' / '##' /
-                                'OutageFactor.csv')
+        # TODO update with new possibility of changing output folder
+        # Clean ES outputs i.e. remove blank spaces
+        es_outputs[i]['assets'] = dl.clean_blanks(es_outputs[i]['assets'])
+        es_outputs[i]['year_balance'] = dl.clean_blanks(es_outputs[i]['year_balance'])
+        es_outputs[i]['layers_in_out'] = dl.clean_blanks(es_outputs[i]['layers_in_out'])
+        es_outputs[i]['storage_characteristics'] = dl.clean_blanks(es_outputs[i]['storage_characteristics'])
+        es_outputs[i]['storage_eff_in'] = dl.clean_blanks(es_outputs[i]['storage_eff_in'])
+        es_outputs[i]['storage_eff_out'] = dl.clean_blanks(es_outputs[i]['storage_eff_out'])
+        es_outputs[i]['high_t_Layers'] = dl.clean_blanks(es_outputs[i]['high_t_Layers'], idx=False)
+        es_outputs[i]['low_t_decen_Layers'] = dl.clean_blanks(es_outputs[i]['low_t_decen_Layers'], idx=False)
+        es_outputs[i]['low_t_dhn_Layers'] = dl.clean_blanks(es_outputs[i]['low_t_dhn_Layers'], idx=False)
+
+        # transforming TD time series into yearly time series
+        td_df = dl.process_TD(td_final=pd.read_csv(config_es['step1_output'], header=None))
+
+        # %% compute fuel prices according to the use of RE vs NON-RE fuels
+        resources = config_es['all_data']['Resources']
+        df = es_outputs[i]['year_balance'].loc[resources.index, es_outputs[i]['year_balance'].columns.isin(list(resources.index))]
+        ds_inputs['Costs'][i] = (df.mul(resources.loc[:, 'c_op'], axis=0).sum(axis=0) /
+                                 df.sum(axis=0)).fillna(resources.loc[:, 'c_op'])
+
+        # %% Compute availability factors and scaled inflows
+        ds_inputs['AvailabilityFactors'][i] = dl.get_availability_factors(es_outputs[i], config_link['DateRange'],
+                                                                          file_name_af='AF_2015_ES',
+                                                                          file_name_sif='IF_2015_ES')
+
+        # %% Compute electricity demand
+        es_outputs[i]['electricity_layers'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
+                                                       'hourly_data' / 'layer_ELECTRICITY.txt', delimiter='\t',
+                                                       index_col=[0, 1])
+        ds_inputs['ElectricityDemand'][i] = dl.get_electricity_demand(es_outputs[i], td_df, config_link['DateRange'],
+                                                                      file_name='2015_ES')
+
+        # %% compute H2 yearly consumption and power capacity of electrolyser
+        es_outputs[i]['h2_layer'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
+                                             'hourly_data' / 'layer_H2.txt', delimiter='\t', index_col=[0, 1])
+        es_outputs[i]['ammonia_layer'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
+                                                       'hourly_data' / 'layer_AMMONIA.txt', delimiter='\t',
+                                                       index_col=[0, 1])
+        es_outputs[i]['gas_layer'] = pd.read_csv(ES_folder / 'case_studies' / config_es['case_study'] / 'output' /
+                                                       'hourly_data' / 'layer_GAS.txt', delimiter='\t',
+                                                       index_col=[0, 1])
+
+        ds_inputs = dl.merge_timeseries_x(ds_inputs, es_outputs[i], td_df, config_link['DateRange'], dispaset_version, i)
+        ds_inputs['XFixDemand'][i] = ds_inputs['XFixDemand'][i].add(-ds_inputs['XFixSupply'][i], fill_value=0)
+
+        # %% Get capacities from ES, map them to DS with external typical unit database
+        typical_units = pd.read_csv(config_link['TypicalUnits'] / 'Typical_Units.csv')
+        ds_inputs['Capacities'][i] = dl.get_capacities_from_es(es_outputs[i], typical_units=typical_units, td_df=td_df,
+                                                               technology_threshold=0.1, dispaset_version=dispaset_version,
+                                                               config_link=config_link, ds_inputs=ds_inputs, i=i)  # TODO: remove really small technologies
+
+        ds_inputs['EVDemand'][i] = dl.get_ev_demand(es_outputs[i], td_df, ds_inputs['Capacities'][i], config_link['DateRange'], file_name='EV_Demand')
+
+        # %% Assign outage factors for technologies that generate more than available
+        ds_inputs['OutageFactors'][i] = dl.get_outage_factors(config_es, es_outputs[i], drange=config_link['DateRange'],
+                                                              local_res=['WASTE', 'WOOD', 'WET_BIOMASS'], td_df=td_df)
+
+        # %% Compute heat demand for different heating layers
+        ds_inputs['HeatDemand'][i] = dl.get_heat_demand(es_outputs[i], td_df, config_link['DateRange'],
+                                                        countries=['ES'], file_name='2015_ES_th',
+                                                        dispaset_version=dispaset_version)
+
+        if dispaset_version == '2.5_BS':
+            dl.write_csv_files('BoundarySectorDemand', ds_inputs['XFixDemand'][i], 'BoundarySectorDemand',
+                               index=True, write_csv=True)
+            dl.write_csv_files('BoundarySectorVarDemand', ds_inputs['XVarDemand'][i], 'BoundarySectorVarDemand',
+                               index=True, write_csv=True)
+            dl.write_csv_files('BoundarySectorVarSupply', ds_inputs['XVarSupply'][i], 'BoundarySectorVarSupply',
+                               index=True, write_csv=True)
+
+        # %% Assign storage levels
+        ds_inputs['ReservoirLevels'][i] = dl.get_soc(es_outputs[i], config_es, config_link['DateRange'])
+
+        # %% ###################################
+        ########## Execute Dispa-SET ##########
+        #######################################
+        # Load the appropriate configuration file (2.5 or boundary sector version)
+        if dispaset_version == '2.5':
+            config = ds.load_config('../ConfigFiles/Config_EnergyScope.xlsx')
+            # config['default']['CostCurtailment'] = abs(es_outputs[i]['Curtailment_cost'].loc['Curtailment_cost',
+            #                                                                               'Curtailment_cost'] * 1000)
+            config['default']['CostCurtailment'] = 0
+        if dispaset_version == '2.5_BS':
+            config = ds.load_config('../ConfigFiles/Config_EnergyScope_BS.xlsx')
+            config['default']['CostCurtailment'] = 0
+        # Assign new input csv files if needed
+        config['ReservoirLevels'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'ReservoirLevels' / '##' /
+                                        'ReservoirLevels.csv')
+
+        config['SimulationDirectory'] = str(DL_folder / 'Simulations' / str(case_study + '_loop_' + str(i)))
+        config['default']['PriceOfCO2'] = abs(es_outputs[i]['CO2_cost'].loc['CO2_cost', 'CO2_cost'] * 1000)
+
+        for j in dl.mapping['ES']['FUEL_COST']:
+            config['default'][dl.mapping['ES']['FUEL_COST'][j]] = ds_inputs['Costs'][i].loc[j] * 1000
+
+        #%% Dispa-SET version 2.5
+        if dispaset_version == '2.5':
+            config['H2FlexibleDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
+                                             'H2_demand.csv')
+            config['H2FlexibleCapacity'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
+                                               'PtLCapacities.csv')
+            config['Outages'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'OutageFactor' / '##' /
+                                    'OutageFactor.csv')
 
 
-    #%% Dispa-SET version boundary sector
-    if dispaset_version == '2.5_BS':
-        config['SectorXDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'BoundarySectorDemand' /
-                                      'ES' / 'BoundarySectorDemand.csv')
-        config['HeatDemand'] = ''
-        config['BoundarySectorData'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'BoundarySectorInputs' /
-                                           'ES' / 'BoundarySectorInputs.csv')
-        # config['BoundarySectorNTC'] = 139
-        # config['BoundarySectorInterconnections'] = 140
-        config['SectorXFlexibleDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' / 'ES' /
-                                         'H2_demand.csv')
-        # config['SectorXFlexibleSupply'] = 142
-        config['BoundarySectorMaxSpillage'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' /
-                                         'H2_demand.csv')
-        # config['CostXNotServed'] = 170
+        #%% Dispa-SET version boundary sector
+        if dispaset_version == '2.5_BS':
+            config['SectorXDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'BoundarySectorDemand' /
+                                          'ES' / 'BoundarySectorDemand.csv')
+            config['HeatDemand'] = ''
+            config['BoundarySectorData'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'BoundarySectorInputs' /
+                                               'ES' / 'BoundarySectorInputs.csv')
+            # config['BoundarySectorNTC'] = 139
+            # config['BoundarySectorInterconnections'] = 140
+            config['SectorXFlexibleDemand'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'BoundarySectorVarDemand' / 'ES' /
+                                             'BoundarySectorVarDemand.csv')
+            config['SectorXFlexibleSupply'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'BoundarySectorVarSupply' / 'ES' /
+                                                         'BoundarySectorVarSupply.csv')
+            config['BoundarySectorMaxSpillage'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' / 'H2_demand' /
+                                             'H2_demand.csv')
+            # config['CostXNotServed'] = 170
+            config['ReservoirScaledOutflows'] = str(DL_folder / 'Outputs' / 'EnergyScope' / 'Database' /
+                                                    'TotalLoadValue' / 'ES' / 'EV_Demand.csv')
 
-    # Build the simulation environment:
-    SimData = ds.build_simulation(config)
+        # Build the simulation environment:
+        SimData = ds.build_simulation(config)
 
-    # Solve using GAMS:
-    _ = ds.solve_GAMS(config['SimulationDirectory'], config['GAMS_folder'])
+        # Solve using GAMS:
+        _ = ds.solve_GAMS(config['SimulationDirectory'], config['GAMS_folder'])
 
-    # Load the simulation results:
-    inputs_mts[i], results_mts[i] = ds.get_sim_results(config['SimulationDirectory'], cache=False, inputs_file='Inputs_MTS.p',
-                                                       results_file='Results_MTS.gdx')
-    inputs[i], results[i] = ds.get_sim_results(config['SimulationDirectory'], cache=False)
+        # Load the simulation results:
+        inputs_mts[i], results_mts[i] = ds.get_sim_results(config['SimulationDirectory'], cache=False, inputs_file='Inputs_MTS.p',
+                                                           results_file='Results_MTS.gdx')
+        inputs[i], results[i] = ds.get_sim_results(config['SimulationDirectory'], cache=False)
 
-    # %% Save DS results to pickle file
-    ES_output = ES_folder / 'case_studies' / config_es['case_study'] / 'output'
-    with open(ES_output / 'DS_Results.p', 'wb') as handle:
-        pickle.dump(inputs[i], handle, protocol=pickle.HIGHEST_PROTOCOL)
-        pickle.dump(results[i], handle, protocol=pickle.HIGHEST_PROTOCOL)
+        # %% Save DS results to pickle file
+        ES_output = ES_folder / 'case_studies' / config_es['case_study'] / 'output'
+        with open(ES_output / 'DS_Results.p', 'wb') as handle:
+            pickle.dump(inputs[i], handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(results[i], handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    # TODO: reading and storing ESTD results
+        # TODO: reading and storing ESTD results
 
-    # %% Run ES with reserves (2nd+ run)
-    config_es['case_study'] = case_study + '_loop_' + str(i + 1)
-    config_es['import_reserves'] = 'from_df'
-    # TODO: check if leap year can be introduced
-    reserves[i] = pd.DataFrame(results[i]['OutputDemand_3U'].values / 1000, columns=['end_uses_reserve'],
-                               index=np.arange(1, 8761, 1))
-    # Check if it is necessary to apply additional reserve requirements
-    if i >= 1:
-        if results[i]['OutputShedLoad'].empty:
-            shed_load[i] = pd.DataFrame(0, columns=['end_uses_reserve'], index=np.arange(1, 8761, 1))
+        # %% Run ES with reserves (2nd+ run)
+        config_es['case_study'] = case_study + '_loop_' + str(i + 1)
+        config_es['import_reserves'] = 'from_df'
+        # TODO: check if leap year can be introduced
+        reserves[i] = pd.DataFrame(results[i]['OutputDemand_3U'].values / 1000, columns=['end_uses_reserve'],
+                                   index=np.arange(1, 8761, 1))
+        # Check if it is necessary to apply additional reserve requirements
+        if i >= 1:
+            if results[i]['OutputShedLoad'].empty:
+                shed_load[i] = pd.DataFrame(0, columns=['end_uses_reserve'], index=np.arange(1, 8761, 1))
+            else:
+                shed_load[i] = pd.DataFrame(results[i]['OutputShedLoad'].values / 1000, columns=['end_uses_reserve'],
+                                            index=np.arange(1, 8761, 1))
+            config_es['reserves'] = config_es['reserves'] + shed_load[i].max()
         else:
-            shed_load[i] = pd.DataFrame(results[i]['OutputShedLoad'].values / 1000, columns=['end_uses_reserve'],
-                                        index=np.arange(1, 8761, 1))
-        config_es['reserves'] = config_es['reserves'] + shed_load[i].max()
-    else:
-        config_es['reserves'] = reserves[i]
+            config_es['reserves'] = reserves[i]
 
-    with open('ES_reserve_' + case_study + '_loop_' + str(i) + '.p', 'wb') as handle:
-        pickle.dump(config_es['reserves'], handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open('ES_reserve_' + case_study + '_loop_' + str(i) + '.p', 'wb') as handle:
+            pickle.dump(config_es['reserves'], handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+        LL = pd.concat([LL, results[i]['OutputShedLoad']], axis=1)
+        Curtailment = pd.concat([Curtailment, results[i]['OutputCurtailedPower']], axis=1)
+
+        if not results[i]['OutputShedLoad'].empty:
+            print('Another iteration required')
+        else:
+            print('Final convergence occurred in loop: ' + str(i) + '. Soft-linking is now complete')
+            break
+
+        # %% Brake loop at the maximum loops specified
+        if i == max_loops - 1:
+            print('Last opt')
+        else:
+            config_es['all_data'] = es.run_ES(config_es)
+
+    with open(case_study + '.p', 'wb') as handle:
+        pickle.dump(inputs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(inputs_mts, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(results_mts, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(config_es, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(es_outputs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+else:
+    with open(case_study + '.p', 'rb') as handle:
+        inputs = pickle.load(handle)
+        results = pickle.load(handle)
+        inputs_mts = pickle.load(handle)
+        results_mts = pickle.load(handle)
+        config_es = pickle.load(handle)
+        es_outputs = pickle.load(handle)
+
+# %% ########################################################################
+# ####################### LDC comparison plots ##############################
+#############################################################################
+es_outputs = dict()
+# config_es['all_data'] = es.run_ES(config_es)
+for i in range(0,5):
+    es_outputs[i] = es.read_outputs(case_study + '_loop_' + str(i), hourly_data=True, layers=['layer_ELECTRICITY', 'layer_reserve_ELECTRICITY'])
+
+td_df = dl.process_TD(td_final=pd.read_csv(config_es['step1_output'], header=None))
+el_layers = es.from_td_to_year(es_outputs[4]['layer_ELECTRICITY'].dropna(axis=1), td_df.rename({'TD': 'TD_number', 'hour': 'H_of_D'}, axis=1))
+es.plot_layer_elec_td(layer_elec=es_outputs[0]['layer_ELECTRICITY'].dropna(axis=1), title='Layer electricity', tds = np.arange(1, 13), reorder_elec = None, figsize = (15, 7))
+# es.hourly_plot(plotdata= es.from_td_to_year(es_outputs[0]['layer_ELECTRICITY'].dropna(axis=1), td_df.rename({'TD': 'TD_number', 'hour': 'H_of_D'}, axis=1)), title='', xticks=None, figsize=(17,7), colors=None, nbr_tds=12, show=True)
+
+positive_el_layers = el_layers.loc[:,el_layers.select_dtypes(include=[np.number]).ge(0).all(0)]
+positive_el_layers = positive_el_layers.loc[:, (positive_el_layers != 0).any(axis=0)]
+
+negative_el_layers = -el_layers.loc[:,el_layers.select_dtypes(include=[np.number]).le(0).all(0)]
+negative_el_layers = negative_el_layers.loc[:, (negative_el_layers != 0).any(axis=0)]
+
+aa = negative_el_layers['END_USE'].sort_values(ascending=False).reset_index(drop=True)
+aa.plot()
+plt.show()
+
+ds_gen = results[0]['OutputPower']/1000
+
+generation = pd.concat([ds_gen.sum(axis=1).reset_index(drop=True), positive_el_layers.sum(axis=1).reset_index(drop=True)], axis=1)
+ldc = pd.concat([ds_gen.sum(axis=1).sort_values(ascending=False).reset_index(drop=True), positive_el_layers.sum(axis=1).sort_values(ascending=False).reset_index(drop=True)], axis=1)
+ldc.rename(columns={0:'DS', 1:'ES'}, inplace=True)
+ldc.plot()
+plt.show()
+
+ldc_ds = pd.concat([negative_el_layers.sum(axis=1).sort_values(ascending=False).reset_index(drop=True), results[0]['TotalDemand']['ES'].sort_values(ascending=False).reset_index(drop=True)/1000], axis=1)
+ldc_ds.rename(columns={0:'DS_GEN', 1:'DS_DEM'}, inplace=True)
+ldc_ds.plot()
+plt.show()
+
+LL = pd.DataFrame()
+Curtailment = pd.DataFrame()
+for i in [0]:
     LL = pd.concat([LL, results[i]['OutputShedLoad']], axis=1)
     Curtailment = pd.concat([Curtailment, results[i]['OutputCurtailedPower']], axis=1)
 
-    if not results[i]['OutputShedLoad'].empty:
-        print('Another iteration required')
-    else:
-        print('Final convergence occurred in loop: ' + str(i) + '. Soft-linking is now complete')
-        break
+a = LL != 0
+b = Curtailment != 0
 
-    # %% Brake loop at the maximum loops specified
-    if i == max_loops - 1:
-        print('Last opt')
-    else:
-        config_es['all_data'] = es.run_ES(config_es)
+LL_cum = LL.cumsum().where(a).ffill().fillna(0)-LL.cumsum().where(~a).ffill().fillna(0)
+Curt_cum = Curtailment.cumsum().where(b).ffill().fillna(0)-Curtailment.cumsum().where(~b).ffill().fillna(0)
 
-with open(case_study + '.p', 'wb') as handle:
-    pickle.dump(inputs, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    pickle.dump(inputs_mts, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    pickle.dump(results_mts, handle, protocol=pickle.HIGHEST_PROTOCOL)
+compare = pd.concat([LL_cum.iloc[:,0], Curt_cum.iloc[:,0]], axis=1)
+compare['diff'] = compare.iloc[:,1] - compare.iloc[:,0]
 
-aa=pd.DataFrame()
-for i in range(max_loops):
-    for j in ['COMC', 'GTUR']:
-        tmp = inputs[i]['units'].loc[(inputs[i]['units']['Technology']==j) & (inputs[i]['units']['Fuel']=='GAS')]
-        aa.loc[i, [j+'_GAS']] = (tmp['PowerCapacity'] * tmp['Nunits']).values[0]
+compare_cum = compare['diff'].cumsum()
 
-aa['Total'] = aa.sum(axis=1)
+compare_cum.plot()
+plt.show()
 
-# with open(case_study + '.p', 'rb') as handle:
-#     inputs = pickle.load(handle)
-#     results = pickle.load(handle)
-#     inputs_mts = pickle.load(handle)
-#     results_mts = pickle.load(handle)
+# aa=pd.DataFrame()
+# for i in range(max_loops):
+#     for j in ['COMC', 'GTUR']:
+#         tmp = inputs[i]['units'].loc[(inputs[i]['units']['Technology']==j) & (inputs[i]['units']['Fuel']=='GAS')]
+#         aa.loc[i, [j+'_GAS']] = (tmp['PowerCapacity'] * tmp['Nunits']).values[0]
+#
+# aa['Total'] = aa.sum(axis=1)
+
 
 # ENS_max = pd.DataFrame()
 # LL = pd.DataFrame()
@@ -367,21 +449,21 @@ aa['Total'] = aa.sum(axis=1)
 # Plots
 import pandas as pd
 
-rng = pd.date_range('2015-12-29', '2015-12-31-23:00', freq='H')
+rng = pd.date_range('2015-01-01', '2015-12-31-23:00', freq='H')
 # Generate country-specific plots
-ds.plot_zone(inputs[2], results[2], rng=rng)
-#
-# Bar plot with the installed capacities in all countries:
-cap = ds.plot_zone_capacities(inputs[3], results[3])
-#
-# # Bar plot with installed storage capacity
-# sto = ds.plot_tech_cap(inputs[2])
-#
-# # Violin plot for CO2 emissions
-# ds.plot_co2(inputs[3], results[3], figsize=(9, 6), width=0.9)
-#
-# Bar plot with the energy balances in all countries:
-GenPerZone = ds.plot_energy_zone_fuel(inputs[2], results[2], ds.get_indicators_powerplant(inputs[2], results[2]))
+ds.plot_zone(inputs[4], results[4], rng=rng)
+# #
+# # Bar plot with the installed capacities in all countries:
+# cap = ds.plot_zone_capacities(inputs[3], results[3])
+# #
+# # # Bar plot with installed storage capacity
+# # sto = ds.plot_tech_cap(inputs[2])
+# #
+# # # Violin plot for CO2 emissions
+# # ds.plot_co2(inputs[3], results[3], figsize=(9, 6), width=0.9)
+# #
+# # Bar plot with the energy balances in all countries:
+# GenPerZone = ds.plot_energy_zone_fuel(inputs[2], results[2], ds.get_indicators_powerplant(inputs[2], results[2]))
 
 # # Analyse the results for each country and provide quantitative indicators:
 # r = ds.get_result_analysis(inputs[0], results[0])

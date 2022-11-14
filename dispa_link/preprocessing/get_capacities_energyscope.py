@@ -5,13 +5,13 @@ import pandas as pd
 
 from ..search import *  # line to import the dictionary
 from ..constants import *  # line to import the dictionary
-from ..preprocessing.get_timeseries_energyscope import get_h2_demand
+from ..preprocessing.get_timeseries_energyscope import get_x_demand
 from ..dispa_link_functions import *
 
 
 def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_csv=True, file_name='PowerPlants',
                            technology_threshold=0, storage_threshold=0.5, t_env=273.15 + 35, t_dhn=90, t_ind=120,
-                           dispaset_version='2.5', config_link=None):
+                           dispaset_version='2.5', config_link=None, ds_inputs=None, i=0):
     """
         Data needed for the Power Plants in DISPA-SET (ES means from ES): 
         - Unit Name
@@ -94,7 +94,7 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
     # Assign more technologies to gas units based on occurance in real life
     power_plants = assign_gas_units(power_plants, comc=4279.6, gt=1550.7, stur=0,
                                     source_name='CCGT', source_fuel='GAS',
-                                    gt_name='OCGT', comc_name='CCGT', stur_name='STUR')
+                                    gt_name='OCGT', comc_name='CCGT', stur_name='STUR', x=False)
     power_plants.drop(index_to_drop, inplace=True)
 
     # Getting all CHP/P2HT/ELEC/STO TECH present in the ES implementation
@@ -157,7 +157,16 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
                 power_plants = assign_parameters_by_index(power_plants, tech, ['Efficiency'], [efficiency])
             elif dispaset_version == '2.5_BS':
                 #FIXME: check if ELY and FC are properly mapped
-                power_plants = assign_parameters_by_index(power_plants, tech, ['Efficiency', 'ChargingEfficiencySector1'], [1, efficiency])
+                efficiency_high_temp = es_outputs['layers_in_out'].at[tech, 'HEAT_HIGH_T'] / \
+                                       es_outputs['layers_in_out'].at[tech, tech_resource]
+                efficiency_dhn = es_outputs['layers_in_out'].at[tech, 'HEAT_LOW_T_DHN'] / \
+                                 es_outputs['layers_in_out'].at[tech, tech_resource]
+                power_plants = assign_parameters_by_index(power_plants, tech,
+                                                          ['Efficiency', 'ChargingEfficiencySector1',
+                                                           'Sector2', 'ChargingEfficiencySector2',
+                                                           'Sector3', 'ChargingEfficiencySector3'],
+                                                          [1, efficiency, 'ES_IND', -efficiency_high_temp,
+                                                           'ES_DHN', -efficiency_dhn])
             else:
                 logging.error('Wrong Dispa-SET version selected')
                 sys.exit(1)
@@ -202,14 +211,12 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
         if dispaset_version == '2.5':
             if zone is None:
                 power_plants = assign_parameters_by_index(power_plants, tech, ['Zone_h2'], ['ES_H2'])
-                # power_plants.at[tech, 'Zone_h2'] = 'ES_H2'
             else:
                 power_plants = assign_parameters_by_index(power_plants, tech, ['Zone_h2'], [zone + '_H2'])
-                # power_plants.at[tech, 'Zone_h2'] = zone + '_H2'  # in GWh
 
         elif dispaset_version == '2.5_BS':
-            h2_ts = get_h2_demand(es_outputs['h2_layer'], td_df, config_link['DateRange'], write_csv=False,
-                                  dispaset_version='2.5_BS')
+            h2_ts = get_x_demand(es_outputs['h2_layer'], td_df, config_link['DateRange'], write_csv=False,
+                                 dispaset_version='2.5_BS')
             for z in h2_ts.columns:
                 boundary_sector_inputs = assign_parameters_by_index(boundary_sector_inputs, z,
                                                                     ['MaxFlexDemand', 'Sector', 'STOCapacity',
@@ -453,6 +460,49 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
             power_plants.loc[index, 'CO2Intensity'] = es_outputs['GWP_op'].loc[power_plants.loc[index, 'Fuel']] / \
                                                       power_plants.loc[index, 'Efficiency']
 
+    # %% ------------------------------ For units consuming X and generating power -------------------------------------
+    for index in power_plants.index:
+        if power_plants.loc[index, 'Technology'] in ['COMCX', 'GTURX', 'ICENX', 'STURX', 'HOBOX']:
+            for f in ['AMO', 'GAS']:
+                if power_plants.loc[index, 'Fuel'] == f:
+                    try:
+                        efficiency = - power_plants.loc[index, 'Efficiency']
+                        power_plants = assign_parameters_by_index(power_plants, index,
+                                                                  ['Efficiency', 'Sector1', 'EfficiencySector1'],
+                                                                  [1, 'ES_' + f, efficiency])
+                    except:
+                        logging.warning(' Technology ' + index + ' has not been found in layers_in_out')
+
+    # boundary_sector_inputs = pd.DataFrame(index=['ES_H2', 'ES_AMO', 'ES_GAS', 'ES_IND', 'ES_DHN'])
+    # for index in ['H2_STORAGE', 'GAS_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL']:
+    boundary_sector_inputs = pd.DataFrame(index=['ES_H2', 'ES_AMO', 'ES_IND', 'ES_DHN'])
+    for index in ['H2_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL']:
+        storage_capacity = original_units.loc[index, 'PowerCapacity'] * 1000
+        storage_self_discharge = es_outputs['storage_characteristics'].loc[index, 'storage_losses']
+        if index == 'H2_STORAGE':
+            sector = 'ES_H2'
+        if index == 'GAS_STORAGE':
+            sector = 'ES_GAS'
+        if index == 'AMMONIA_STORAGE':
+            sector = 'ES_AMO'
+        if index == 'TS_HIGH_TEMP':
+            sector = 'ES_IND'
+        if index == 'TS_DHN_SEASONAL':
+            sector = 'ES_DHN'
+        if not ds_inputs == None:
+            try:
+                max_flex_demand = ds_inputs['XVarDemand'][i].loc[ds_inputs['XVarDemand'][i][sector].idxmax(),sector]
+            except:
+                max_flex_demand = 0
+            try:
+                max_flex_supply = ds_inputs['XVarSupply'][i].loc[ds_inputs['XVarSupply'][i][sector].idxmax(),sector]
+            except:
+                max_flex_supply = 0
+        boundary_sector_inputs = assign_parameters_by_index(boundary_sector_inputs, sector,
+                                                            ['Sector', 'STOCapacity', 'STOSelfDischarge',
+                                                             'MaxFlexDemand', 'MaxFlexSupply'],
+                                                            [sector, storage_capacity, storage_self_discharge,
+                                                             max_flex_demand, max_flex_supply])
     # %% ---------------------------------------------- For non-CHP units ----------------------------------------------
     power_plants = assign_typical_values(power_plants, typical_units, ['CHP', 'P2GS'], 'mean', 1000, 1000)
 
@@ -474,6 +524,9 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
         power_plants = pd.DataFrame(power_plants, columns=column_names)
     if dispaset_version == '2.5_BS':
         power_plants = pd.DataFrame(power_plants, columns=column_names_bs)
+        column_names_bs_input = ['Sector', 'STOCapacity', 'STOSelfDischarge', 'MaxFlexDemand', 'MaxFlexSupply',
+                                 'STOMinSOC']
+        boundary_sector_inputs = pd.DataFrame(boundary_sector_inputs, columns=column_names_bs_input)
 
     # Assign water consumption
     power_plants.loc[:, 'WaterWithdrawal'] = 0
@@ -488,7 +541,6 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
             write_csv_files(file_name, allunits, 'PowerPlants', index=False, write_csv=True)
         return allunits
     if dispaset_version == '2.5_BS':
-        boundary_sector_inputs['STOCapacity'] = boundary_sector_inputs['STOCapacity'] * 1000  # to MWh
         boundary_sector_inputs.reset_index(col_level='Sector', drop=True, inplace=True)
         if write_csv:
             write_csv_files(file_name, allunits, 'PowerPlants', index=False, write_csv=True)

@@ -56,7 +56,7 @@ def assign_parameters_by_index(power_plants, idx, parameters, values):
 
 
 def assign_gas_units(power_plants, comc=1, gt=1, stur=1, source_name='CCGT', source_fuel='GAS',
-                     gt_name='OCGT', comc_name='CCGT', stur_name='STUR'):
+                     gt_name='OCGT', comc_name='CCGT', stur_name='STUR', x=True):
     """
     Assign one capacity to multiple technologies, i.e. one gas technology to multiple gas technologies (1-M mapping)
     :param power_plants:    power plant database in Dispa-SET readable format
@@ -69,12 +69,16 @@ def assign_gas_units(power_plants, comc=1, gt=1, stur=1, source_name='CCGT', sou
     :param stur_name:       source steam turbine name
     :return:                power plant database in Dispa-SET readable format
     """
+    if x:
+        x = 'X'
+    else:
+        x = ''
     power_plants.loc[gt_name + '_' + source_fuel, ['PowerCapacity', 'Technology', 'Fuel', 'Sort']] = \
-        [power_plants.loc[source_name, 'PowerCapacity'] * gt / (comc + gt + stur), 'GTUR', source_fuel, 'ELEC']
+        [power_plants.loc[source_name, 'PowerCapacity'] * gt / (comc + gt + stur), 'GTUR' + x, source_fuel, 'ELEC']
     power_plants.loc[comc_name + '_' + source_fuel, ['PowerCapacity', 'Technology', 'Fuel', 'Sort']] = \
-        [power_plants.loc[source_name, 'PowerCapacity'] * comc / (comc + gt + stur), 'COMC', source_fuel, 'ELEC']
+        [power_plants.loc[source_name, 'PowerCapacity'] * comc / (comc + gt + stur), 'COMC' + x, source_fuel, 'ELEC']
     power_plants.loc[stur_name + '_' + source_fuel, ['PowerCapacity', 'Technology', 'Fuel', 'Sort']] = \
-        [power_plants.loc[source_name, 'PowerCapacity'] * stur / (comc + gt + stur), 'STUR', source_fuel, 'ELEC']
+        [power_plants.loc[source_name, 'PowerCapacity'] * stur / (comc + gt + stur), 'STUR' + x, source_fuel, 'ELEC']
     power_plants.drop(source_name, inplace=True)
     return power_plants
 

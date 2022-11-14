@@ -6,6 +6,7 @@
 numpy
 pandas
 matplotlib
+enlopy
 future
 click
 xlrd==1.2
