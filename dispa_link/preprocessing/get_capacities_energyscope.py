@@ -1,6 +1,8 @@
 import logging
 import math
 import sys
+
+import numpy as np
 import pandas as pd
 
 from ..search import *  # line to import the dictionary
@@ -71,7 +73,8 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
     # Here everything is in GW/GWh
 
     # Fill in the column Technology, Fuel according to the mapping Dictionary defined here above
-    power_plants = assign_parameters(power_plants, power_plants.index.to_series().map(mapping['ES']['TECH']), 'Technology')
+    power_plants = assign_parameters(power_plants, power_plants.index.to_series().map(mapping['ES']['TECH']),
+                                     'Technology')
     power_plants = assign_parameters(power_plants, power_plants.index.to_series().map(mapping['ES']['FUEL']), 'Fuel')
 
     # the column Sort is added to do some conditional changes for CHP and STO units
@@ -156,7 +159,7 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
             if dispaset_version == '2.5':
                 power_plants = assign_parameters_by_index(power_plants, tech, ['Efficiency'], [efficiency])
             elif dispaset_version == '2.5_BS':
-                #FIXME: check if ELY and FC are properly mapped
+                # FIXME: check if ELY and FC are properly mapped
                 efficiency_high_temp = es_outputs['layers_in_out'].at[tech, 'HEAT_HIGH_T'] / \
                                        es_outputs['layers_in_out'].at[tech, tech_resource]
                 efficiency_dhn = es_outputs['layers_in_out'].at[tech, 'HEAT_LOW_T_DHN'] / \
@@ -201,7 +204,7 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
                 #                                                               storage_charging_efficiency]
             elif dispaset_version == '2.5_BS':
                 # Adjust P2GS unit to boundary sector conditions
-                #FIXME: i need to be generic so that it is also possible to destinguish between ELY and FC
+                # FIXME: i need to be generic so that it is also possible to destinguish between ELY and FC
                 storage_max_charge_power = power_plants.loc[power_plants.index == tech, 'PowerCapacity']
                 power_plants = assign_parameters_by_index(power_plants, tech, ['STOMaxChargingPower', 'PowerCapacity'],
                                                           [storage_max_charge_power, 0])
@@ -268,8 +271,9 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
             else:
                 chp_type = 'back-pressure'
 
-            power_plants = assign_parameters_by_index(power_plants, tech, ['PowerCapacity', 'CHPPowerToHeat', 'Efficiency',
-                                                                           'CHPType', 'CHPPowerLossFactor'],
+            power_plants = assign_parameters_by_index(power_plants, tech,
+                                                      ['PowerCapacity', 'CHPPowerToHeat', 'Efficiency',
+                                                       'CHPType', 'CHPPowerLossFactor'],
                                                       [capacity, power_to_heat_ratio, efficiency, chp_type, beta])
 
         except:
@@ -462,8 +466,8 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
 
     # %% ------------------------------ For units consuming X and generating power -------------------------------------
     for index in power_plants.index:
-        if power_plants.loc[index, 'Technology'] in ['COMCX', 'GTURX', 'ICENX', 'STURX', 'HOBOX']:
-            for f in ['AMO', 'GAS']:
+        if power_plants.loc[index, 'Technology'] in ['COMCX', 'GTURX', 'ICENX', 'STURX']:
+            for f in ['AMO', 'GAS', 'BIO', 'OIL', 'HRD', 'WST']:
                 if power_plants.loc[index, 'Fuel'] == f:
                     try:
                         efficiency = - power_plants.loc[index, 'Efficiency']
@@ -473,29 +477,38 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
                     except:
                         logging.warning(' Technology ' + index + ' has not been found in layers_in_out')
 
-    # boundary_sector_inputs = pd.DataFrame(index=['ES_H2', 'ES_AMO', 'ES_GAS', 'ES_IND', 'ES_DHN'])
-    # for index in ['H2_STORAGE', 'GAS_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL']:
-    boundary_sector_inputs = pd.DataFrame(index=['ES_H2', 'ES_AMO', 'ES_IND', 'ES_DHN'])
-    for index in ['H2_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL']:
-        storage_capacity = original_units.loc[index, 'PowerCapacity'] * 1000
-        storage_self_discharge = es_outputs['storage_characteristics'].loc[index, 'storage_losses']
+
+    # boundary_sector_inputs = pd.DataFrame(index=['ES_H2', 'ES_AMO', 'ES_GAS', 'ES_IND', 'ES_DHN', 'ES_OIL'])
+    # for index in ['H2_STORAGE', 'GAS_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL', 'LFO_STORAGE']:
+    boundary_sector_inputs = pd.DataFrame(index=['ES_H2', 'ES_AMO', 'ES_IND', 'ES_DHN', 'ES_OIL', 'ES_HRD', 'ES_WST', 'ES_BIO'])
+    for index in ['H2_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL', 'ES_OIL', 'ES_HRD', 'ES_WST', 'ES_BIO']:
+        if index in ['H2_STORAGE', 'GAS_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL', 'LFO_STORAGE']:
+            storage_capacity = original_units.loc[index, 'PowerCapacity'] * 1000
+            storage_self_discharge = es_outputs['storage_characteristics'].loc[index, 'storage_losses']
+        else:
+            storage_capacity = np.nan
+            storage_self_discharge = np.nan
         if index == 'H2_STORAGE':
             sector = 'ES_H2'
-        if index == 'GAS_STORAGE':
+        elif index == 'GAS_STORAGE':
             sector = 'ES_GAS'
-        if index == 'AMMONIA_STORAGE':
+        elif index == 'AMMONIA_STORAGE':
             sector = 'ES_AMO'
-        if index == 'TS_HIGH_TEMP':
+        elif index == 'TS_HIGH_TEMP':
             sector = 'ES_IND'
-        if index == 'TS_DHN_SEASONAL':
+        elif index == 'TS_DHN_SEASONAL':
             sector = 'ES_DHN'
+        elif index == 'LFO_STORAGE':
+            sector = 'ES_OIL'
+        else:
+            sector = index
         if not ds_inputs == None:
             try:
-                max_flex_demand = ds_inputs['XVarDemand'][i].loc[ds_inputs['XVarDemand'][i][sector].idxmax(),sector]
+                max_flex_demand = ds_inputs['XVarDemand'][i].loc[ds_inputs['XVarDemand'][i][sector].idxmax(), sector]
             except:
                 max_flex_demand = 0
             try:
-                max_flex_supply = ds_inputs['XVarSupply'][i].loc[ds_inputs['XVarSupply'][i][sector].idxmax(),sector]
+                max_flex_supply = ds_inputs['XVarSupply'][i].loc[ds_inputs['XVarSupply'][i][sector].idxmax(), sector]
             except:
                 max_flex_supply = 0
         boundary_sector_inputs = assign_parameters_by_index(boundary_sector_inputs, sector,
@@ -508,11 +521,11 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
 
     # %% ------------------------------------------------ For CHP units ------------------------------------------------
     power_plants = assign_typical_values(power_plants, typical_units,
-                                         ['HEAT', 'ELEC', 'STO', 'P2GS', 'P2HT','P2GS_STO'], 'mean', 1000, 1000)
+                                         ['HEAT', 'ELEC', 'STO', 'P2GS', 'P2HT', 'P2GS_STO'], 'mean', 1000, 1000)
 
     # %% ------------------------------------------------ For P2GS units -----------------------------------------------
     power_plants = assign_typical_values(power_plants, typical_units,
-                                         ['HEAT', 'ELEC', 'STO', 'CHP', 'P2HT','P2GS_STO'], 'mean', 1000, 1000)
+                                         ['HEAT', 'ELEC', 'STO', 'CHP', 'P2HT', 'P2GS_STO'], 'mean', 1000, 1000)
 
     # %% ------------ Last stuff to do ------------
     # Change the value of the Zone - TO IMPROVE WITH SEVERAL COUNTRIES

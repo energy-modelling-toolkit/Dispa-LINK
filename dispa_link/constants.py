@@ -88,17 +88,35 @@ common['ES']['gas_fix_sup'] = ['GASIFICATION_SNG', 'SYN_METHANATION', 'BIO_HYDRO
 common['ES']['gas_var_sup'] = ['GAS', 'GAS_RE', 'BIOMETHANATION']
 common['ES']['ind_fix_dem'] = ['OIL_TO_HVC', 'BIOMASS_TO_HVC', 'AMMONIA_TO_H2', 'END_USE']
 common['ES']['ind_var_dem'] = ['METHANOL_TO_HVC']
-common['ES']['ind_fix_sup'] = []
-common['ES']['ind_var_sup'] = []
+common['ES']['ind_fix_sup'] = ['IND_BOILER_WOOD', 'IND_BOILER_OIL', 'IND_BOILER_COAL', 'IND_BOILER_WASTE']
+common['ES']['ind_var_sup'] = ['IND_BOILER_GAS']
 common['ES']['dhn_fix_dem'] = ['END_USE']
 common['ES']['dhn_var_dem'] = []
 common['ES']['dhn_fix_sup'] = ['HABER_BOSCH', 'BIOMASS_TO_METHANOL', 'GASIFICATION_SNG', 'AMMONIA_TO_H2',
-                               'SYN_METHANOLATION', 'SYN_METHANATION']
-common['ES']['dhn_var_sup'] = []
+                               'SYN_METHANOLATION', 'SYN_METHANATION', 'DHN_BOILER_WOOD', 'DHN_BOILER_OIL', 'DHN_SOLAR']
+common['ES']['dhn_var_sup'] = ['DHN_BOILER_GAS']
 common['ES']['dec_fix_dem'] = ['END_USE']
 common['ES']['dec_var_dem'] = []
-common['ES']['dec_fix_sup'] = []
-common['ES']['dec_var_sup'] = []
+common['ES']['dec_fix_sup'] = ['DEC_BOILER_WOOD', 'DEC_BOILER_OIL', 'DEC_SOLAR']
+common['ES']['dec_var_sup'] = ['DEC_THHP_GAS', 'DEC_BOILER_GAS']
+common['ES']['wood_fix_dem'] = ['END_USE', 'BIOMASS_TO_METHANOL', 'BIOMASS_TO_HVC', 'H2_BIOMASS', 'GASIFICATION_SNG',
+                                'PYROLYSIS_TO_LFO', 'PYROLYSIS_TO_FUELS', 'IND_BOILER_WOOD', 'DHN_BOILER_WOOD',
+                                'DEC_BOILER_WOOD']
+common['ES']['wood_var_dem'] = []
+common['ES']['wood_fix_sup'] = []
+common['ES']['wood_var_sup'] = ['WOOD']
+common['ES']['lfo_fix_dem'] = ['END_USE', 'OIL_TO_HVC', 'IND_BOILER_OIL', 'DHN_BOILER_OIL', 'DEC_BOILER_OIL']
+common['ES']['lfo_var_dem'] = []
+common['ES']['lfo_fix_sup'] = ['PYROLYSIS_TO_LFO']
+common['ES']['lfo_var_sup'] = ['LFO']
+common['ES']['coal_fix_dem'] = ['END_USE', 'IND_BOILER_COAL']
+common['ES']['coal_var_dem'] = []
+common['ES']['coal_fix_sup'] = []
+common['ES']['coal_var_sup'] = ['COAL']
+common['ES']['waste_fix_dem'] = ['END_USE', 'IND_BOILER_WASTE']
+common['ES']['waste_var_dem'] = []
+common['ES']['waste_fix_sup'] = []
+common['ES']['waste_var_sup'] = ['WASTE']
 
 # Lists for AvailibilityFactors
 AvailFactors = ['PHOT', 'WTON', 'WTOF', 'HROR']  # Dispa-SET nomenclature
@@ -127,32 +145,32 @@ mapping['ES']['SORT'] = {u'CCGT': u'ELEC',
                    u'IND_COGEN_GAS': u'CHP',  # ADD extraction/back-pressure/other
                    u'IND_COGEN_WOOD': u'CHP',  # ADD extraction/back-pressure/other
                    u'IND_COGEN_WASTE': u'CHP',  # ADD extraction/back-pressure/other
-                   u'IND_BOILER_GAS': u'HEAT',
-                   u'IND_BOILER_WOOD': u'HEAT',
-                   u'IND_BOILER_OIL': u'HEAT',
-                   u'IND_BOILER_COAL': u'HEAT',
-                   u'IND_BOILER_WASTE': u'HEAT',
+                   u'IND_BOILER_GAS': u'',
+                   u'IND_BOILER_WOOD': u'',
+                   u'IND_BOILER_OIL': u'',
+                   u'IND_BOILER_COAL': u'',
+                   u'IND_BOILER_WASTE': u'',
                    u'IND_DIRECT_ELEC': u'P2HT',  # P2HT ?
                    u'DHN_HP_ELEC': u'P2HT',  # P2HT ?
                    u'DHN_COGEN_GAS': u'CHP',  # ADD extraction/back-pressure/other
                    u'DHN_COGEN_WOOD': u'CHP',  # ADD extraction/back-pressure/other
                    u'DHN_COGEN_WASTE': u'CHP',  # ADD extraction/back-pressure/other
                    u'DHN_COGEN_WET_BIOMASS': u'CHP',  # ADD extraction/back-pressure/other
-                   u'DHN_BOILER_GAS': u'HEAT',
-                   u'DHN_BOILER_WOOD': u'HEAT',
-                   u'DHN_BOILER_OIL': u'HEAT',
-                   u'DHN_DEEP_GEO': u'HEAT',
-                   u'DHN_SOLAR': u'HEAT',
+                   u'DHN_BOILER_GAS': u'',
+                   u'DHN_BOILER_WOOD': u'',
+                   u'DHN_BOILER_OIL': u'',
+                   u'DHN_DEEP_GEO': u'',
+                   u'DHN_SOLAR': u'',
                    u'DEC_HP_ELEC': u'P2HT',  # P2HT ?
                    u'DEC_THHP_GAS': u'HEAT',
                    u'DEC_COGEN_GAS': u'CHP',  # ADD extraction/back-pressure/other
                    u'DEC_COGEN_OIL': u'CHP',  # ADD extraction/back-pressure/other
                    u'DEC_ADVCOGEN_GAS': u'CHP',  # ADD extraction/back-pressure/other
                    u'DEC_ADVCOGEN_H2': u'CHP',  # ADD extraction/back-pressure/other
-                   u'DEC_BOILER_GAS': u'HEAT',
-                   u'DEC_BOILER_WOOD': u'HEAT',
-                   u'DEC_BOILER_OIL': u'HEAT',
-                   u'DEC_SOLAR': u'HEAT',
+                   u'DEC_BOILER_GAS': u'',
+                   u'DEC_BOILER_WOOD': u'',
+                   u'DEC_BOILER_OIL': u'',
+                   u'DEC_SOLAR': u'',
                    u'DEC_DIRECT_ELEC': u'P2HT',
                    u'PHS': u'STO',
                    u'PHES': u'STO',  # Same thing than PHS ?
@@ -181,8 +199,8 @@ mapping['ES']['SORT'] = {u'CCGT': u'ELEC',
 
 mapping['ES']['TECH'] = {u'CCGT': u'COMC',
                    u'CCGT_AMMONIA': u'COMCX',
-                   u'COAL_US': u'STUR',
-                   u'COAL_IGCC': u'STUR',
+                   u'COAL_US': u'STURX',
+                   u'COAL_IGCC': u'STURX',
                    u'PV': u'PHOT',
                    u'GEOTHERMAL': u'STUR',
                    u'NUCLEAR': u'STUR',
@@ -196,35 +214,35 @@ mapping['ES']['TECH'] = {u'CCGT': u'COMC',
                    u'WIND_OCapitalfCapitalfSHORE': u'WTOF',
                    u'WIND_OFFSHORE': u'WTOF',
                    u'WIND_ONSHORE': u'WTON',
-                   u'IND_COGEN_GAS': u'STURX',
-                   u'IND_COGEN_WOOD': u'STUR',
-                   u'IND_COGEN_WASTE': u'STUR',
-                   u'IND_BOILER_GAS': u'HOBOX',
-                   u'IND_BOILER_WOOD': u'HOBO',
-                   u'IND_BOILER_OIL': u'HOBO',
-                   u'IND_BOILER_COAL': u'HOBO',
-                   u'IND_BOILER_WASTE': u'HOBO',
+                   u'IND_COGEN_GAS': u'STUR',
+                   u'IND_COGEN_WOOD': u'STURX',
+                   u'IND_COGEN_WASTE': u'STURX',
+                   u'IND_BOILER_GAS': u'',
+                   u'IND_BOILER_WOOD': u'',
+                   u'IND_BOILER_OIL': u'',
+                   u'IND_BOILER_COAL': u'',
+                   u'IND_BOILER_WASTE': u'',
                    u'IND_DIRECT_ELEC': u'REHE',  # TO CHECK
                    u'DHN_HP_ELEC': u'HYHP',  # TO CHECK : HP = Heat Pump ?
                    u'DHN_COGEN_GAS': u'COMC',
-                   u'DHN_COGEN_WOOD': u'COMC',
-                   u'DHN_COGEN_WASTE': u'STUR',
+                   u'DHN_COGEN_WOOD': u'COMCX',
+                   u'DHN_COGEN_WASTE': u'STURX',
                    u'DHN_COGEN_WET_BIOMASS': u'COMC',
-                   u'DHN_BOILER_GAS': u'HOBOX',
-                   u'DHN_BOILER_WOOD': u'HOBO',
-                   u'DHN_BOILER_OIL': u'HOBO',
-                   u'DHN_DEEP_GEO': u'GETH',
-                   u'DHN_SOLAR': u'SOTH',
+                   u'DHN_BOILER_GAS': u'',
+                   u'DHN_BOILER_WOOD': u'',
+                   u'DHN_BOILER_OIL': u'',
+                   u'DHN_DEEP_GEO': u'',
+                   u'DHN_SOLAR': u'',
                    u'DEC_HP_ELEC': u'ASHP',  # TO CHECK : HP = Heat Pump ?
                    u'DEC_THHP_GAS': u'ABHP',
-                   u'DEC_COGEN_GAS': u'GTURX',
-                   u'DEC_COGEN_OIL': u'GTUR',
+                   u'DEC_COGEN_GAS': u'GTUR',
+                   u'DEC_COGEN_OIL': u'GTURX',
                    u'DEC_ADVCOGEN_GAS': u'COMC',
                    u'DEC_ADVCOGEN_H2': u'SOFC',
-                   u'DEC_BOILER_GAS': u'HOBOX',
-                   u'DEC_BOILER_WOOD': u'HOBO',
-                   u'DEC_BOILER_OIL': u'HOBO',
-                   u'DEC_SOLAR': u'SOTH',
+                   u'DEC_BOILER_GAS': u'',
+                   u'DEC_BOILER_WOOD': u'',
+                   u'DEC_BOILER_OIL': u'',
+                   u'DEC_SOLAR': u'',
                    u'DEC_DIRECT_ELEC': u'REHE',  # TO CHECK : HP = Heat Pump ?
                    u'PHS': u'HPHS',
                    u'PHES': u'HPHS',

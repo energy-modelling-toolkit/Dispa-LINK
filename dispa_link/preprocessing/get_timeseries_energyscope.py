@@ -262,60 +262,73 @@ def merge_timeseries_x(ds_inputs, df, td_df, drange, dispaset_version, i):
     :return:                    populated ds_inputs dictionary
     """
     # Assign fixed demands in Sector X
-    ds_inputs['XFixDemand'][i] = pd.concat(
-        [-get_x_demand(df['h2_layer'], td_df, drange, dispaset_version=dispaset_version,
-                       columns=common['ES']['h2_fix_dem'], layer_name='ES_H2'),
-         -get_x_demand(df['ammonia_layer'], td_df, drange,
-                       dispaset_version=dispaset_version,
-                       columns=common['ES']['ammonia_fix_dem'], layer_name='ES_AMO'),
-         # -get_x_demand(df['gas_layer'], td_df, drange,
-         #               dispaset_version=dispaset_version,
-         #               columns=common['ES']['gas_fix_dem'], layer_name='ES_GAS'),
-         -get_x_demand(df['high_t_Layers'], td_df, drange,
-                       dispaset_version=dispaset_version,
-                       columns=common['ES']['ind_fix_dem'], layer_name='ES_IND'),
-         -get_x_demand(df['low_t_dhn_Layers'], td_df, drange,
-                       dispaset_version=dispaset_version,
-                       columns=common['ES']['dhn_fix_dem'], layer_name='ES_DHN'),
-         -get_x_demand(df['low_t_decen_Layers'], td_df, drange,
-                       dispaset_version=dispaset_version,
-                       columns=common['ES']['dec_fix_dem'], layer_name='ES_DEC')],
-        axis=1)
+    ds_inputs['XFixDemand'][i] = - cocncat_ts(ds_inputs, df, td_df, drange, dispaset_version, i,
+                                              var_name='XFixDemand',
+                                              # layers=['h2', 'ammonia', 'gas', 'ind', 'dhn', 'dec', 'wood', 'lfo', 'coal', 'waste'])
+                                              layers=['h2', 'ammonia', 'ind', 'dhn', 'dec', 'wood', 'lfo', 'coal',
+                                                      'waste'])
     # Assign Variable Demands in Sector X
-    ds_inputs['XVarDemand'][i] = pd.concat([
-        # -get_x_demand(df['gas_layer'], td_df,
-        #               drange,
-        #               dispaset_version=dispaset_version,
-        #               columns=common['ES']['gas_var_dem'],
-        #               layer_name='ES_GAS'),
-        -get_x_demand(df['high_t_Layers'], td_df,
-                      drange,
-                      dispaset_version=dispaset_version,
-                      columns=common['ES']['ind_var_dem'],
-                      layer_name='ES_IND')], axis=1)
+    ds_inputs['XVarDemand'][i] = - cocncat_ts(ds_inputs, df, td_df, drange, dispaset_version, i,
+                                              # var_name='XVarDemand', layers=['gas', 'ind'])
+                                              var_name='XVarDemand', layers=['ind'])
     # Assign fixed supply in Sector X
-    ds_inputs['XFixSupply'][i] = pd.concat(
-        [get_x_demand(df['h2_layer'], td_df, drange, dispaset_version=dispaset_version,
-                      columns=common['ES']['h2_fix_sup'], layer_name='ES_H2'),
-         get_x_demand(df['ammonia_layer'], td_df, drange,
-                      dispaset_version=dispaset_version,
-                      columns=common['ES']['ammonia_fix_sup'], layer_name='ES_AMO'),
-         # get_x_demand(df['gas_layer'], td_df, drange,
-         #              dispaset_version=dispaset_version,
-         #              columns=common['ES']['gas_fix_sup'], layer_name='ES_GAS'),
-         get_x_demand(df['low_t_dhn_Layers'], td_df, drange,
-                      dispaset_version=dispaset_version,
-                      columns=common['ES']['dhn_fix_sup'], layer_name='ES_DHN')],
-        axis=1)
+    ds_inputs['XFixSupply'][i] = cocncat_ts(ds_inputs, df, td_df, drange, dispaset_version, i,
+                                            # var_name='XFixSupply', layers=['h2', 'ammonia', 'gas', 'dhn', 'lfo'])
+                                            var_name='XFixSupply', layers=['h2', 'ammonia', 'ind', 'dhn', 'dec', 'lfo'])
     # Assign variable supply in Sector X
-    ds_inputs['XVarSupply'][i] = pd.concat(
-        [get_x_demand(df['h2_layer'], td_df, drange, dispaset_version=dispaset_version,
-                      columns=common['ES']['h2_var_sup'], layer_name='ES_H2'),
-         get_x_demand(df['ammonia_layer'], td_df, drange,
-                      dispaset_version=dispaset_version,
-                      columns=common['ES']['ammonia_var_sup'], layer_name='ES_AMO'),
-         # get_x_demand(df['gas_layer'], td_df, drange,
-         #              dispaset_version=dispaset_version,
-         #              columns=common['ES']['gas_var_sup'], layer_name='ES_GAS')
-         ], axis=1)
+    ds_inputs['XVarSupply'][i] = cocncat_ts(ds_inputs, df, td_df, drange, dispaset_version, i,
+                                            var_name='XVarSupply',
+                                            # layers=['h2', 'ammonia', 'gas', 'wood', 'lfo', 'coal', 'waste'])
+                                            layers=['h2', 'ammonia', 'ind', 'dhn', 'dec', 'wood', 'lfo', 'coal', 'waste'])
     return ds_inputs
+
+
+def cocncat_ts(ds_inputs, df, td_df, drange, dispaset_version, i, var_name='XVarSupply',
+               layers=['h2', 'ammonia', 'gas', 'ind', 'dhn', 'dec', 'wood', 'lfo', 'coal', 'waste']):
+    """
+
+    :param ds_inputs:           ds_inputs dictionary
+    :param df:                  Energy Scope output layers
+    :param td_df:               Typical day to hourly dataframe
+    :param drange:              Date range
+    :param dispaset_version:    Dispaset version
+    :param i:                   Iteration
+    :param var_name:            Variable name to be assigned XVarSupply, XFixDemand ....
+    :param layers:              Layers to be represented as a boundary sector
+    :return:
+    """
+    mpng = {'layer': {'h2': 'h2_layer',
+                      'ammonia': 'ammonia_layer',
+                      'gas': 'gas_layer',
+                      'ind': 'high_t_Layers',
+                      'dhn': 'low_t_dhn_Layers',
+                      'dec': 'low_t_decen_Layers',
+                      'wood': 'wood_layer',
+                      'lfo': 'lfo_layer',
+                      'coal': 'coal_layer',
+                      'waste': 'waste_layer'},
+            'layer_name': {'h2': 'ES_H2',
+                           'ammonia': 'ES_AMO',
+                           'gas': 'ES_GAS',
+                           'ind': 'ES_IND',
+                           'dhn': 'ES_DHN',
+                           'dec': 'ES_DEC',
+                           'wood': 'ES_BIO',
+                           'lfo': 'ES_OIL',
+                           'coal': 'ES_HRD',
+                           'waste': 'ES_WST'},
+            'lookup': {'XVarSupply': '_var_sup',
+                       'XVarDemand': '_var_dem',
+                       'XFixSupply': '_fix_sup',
+                       'XFixDemand': '_fix_dem'}
+            }
+
+    ds_inputs[var_name][i] = pd.DataFrame()
+    for l in layers:
+        ds_inputs[var_name][i] = pd.concat([ds_inputs[var_name][i],
+                                            get_x_demand(df[mpng['layer'][l]], td_df, drange,
+                                                         dispaset_version=dispaset_version,
+                                                         columns=common['ES'][l + mpng['lookup'][var_name]],
+                                                         layer_name=mpng['layer_name'][l])], axis=1)
+
+    return ds_inputs[var_name][i]
