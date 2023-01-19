@@ -480,8 +480,8 @@ def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_cs
 
     # boundary_sector_inputs = pd.DataFrame(index=['ES_H2', 'ES_AMO', 'ES_GAS', 'ES_IND', 'ES_DHN', 'ES_OIL'])
     # for index in ['H2_STORAGE', 'GAS_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL', 'LFO_STORAGE']:
-    boundary_sector_inputs = pd.DataFrame(index=['ES_H2', 'ES_AMO', 'ES_IND', 'ES_DHN', 'ES_OIL', 'ES_HRD', 'ES_WST', 'ES_BIO'])
-    for index in ['H2_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL', 'ES_OIL', 'ES_HRD', 'ES_WST', 'ES_BIO']:
+    boundary_sector_inputs = pd.DataFrame(index=['ES_H2', 'ES_AMO', 'ES_IND', 'ES_DHN', 'ES_DEC', 'ES_OIL', 'ES_HRD', 'ES_WST', 'ES_BIO'])
+    for index in ['H2_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL', 'ES_OIL', 'ES_HRD', 'ES_WST', 'ES_BIO', 'ES_DEC']:
         if index in ['H2_STORAGE', 'GAS_STORAGE', 'AMMONIA_STORAGE', 'TS_HIGH_TEMP', 'TS_DHN_SEASONAL', 'LFO_STORAGE']:
             storage_capacity = original_units.loc[index, 'PowerCapacity'] * 1000
             storage_self_discharge = es_outputs['storage_characteristics'].loc[index, 'storage_losses']

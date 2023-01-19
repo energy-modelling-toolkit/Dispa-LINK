@@ -234,7 +234,7 @@ mapping['ES']['TECH'] = {u'CCGT': u'COMC',
                    u'DHN_DEEP_GEO': u'',
                    u'DHN_SOLAR': u'',
                    u'DEC_HP_ELEC': u'ASHP',  # TO CHECK : HP = Heat Pump ?
-                   u'DEC_THHP_GAS': u'ABHP',
+                   u'DEC_THHP_GAS': u'',
                    u'DEC_COGEN_GAS': u'GTUR',
                    u'DEC_COGEN_OIL': u'GTURX',
                    u'DEC_ADVCOGEN_GAS': u'COMC',
@@ -337,7 +337,11 @@ mapping['ES']['FUEL'] = {u'CCGT': u'GAS',
                    u'SEASONAL_H2': u'HYD',
                    u'H2_STORAGE': u'HYD',
                    u'H2_ELECTROLYSIS': u'HYD',
-                   u'HABER_BOSCH': u''}  # TO DO
+                   u'HABER_BOSCH': u'',
+                   u'PHS_Pout': u'WAT',
+                   u'BATT_LI_Pout': u'OTH',
+                   u'BEV_BATT_Pout': u'OTH',
+                   u'PHEV_BATT_Pout': u'OTH'}  # TO DO
 
 mapping['ES']['RESOURCE'] = {u'BIODIESEL': u'BIODIESEL',
                        u'BIOETHANOL': u'BIOETHANOL',

@@ -65,6 +65,8 @@ commons['Fuels'] = ['AIR', 'BIO', 'GAS', 'HRD', 'LIG', 'NUC', 'OIL', 'PEA', 'SUN
 commons['MeritOrder'] = ['THMS', 'SCSP', 'BATS', 'BEVS', 'HDAM', 'HPHS', 'P2GS', 'FlowOut', 'GEO', 'NUC', 'LIG',
                          'HRD', 'BIO', 'GAS', 'OIL', 'PEA', 'WST', 'OTH', 'SUN', 'WIN', 'FlowIn', 'WAT',
                          'HYD', 'AIR', 'WHT']
+commons['MeritFuels'] = ['GEO', 'NUC', 'LIG', 'HRD', 'BIO', 'AMO', 'GAS', 'OIL', 'PEA', 'WST', 'OTH', 'SUN', 'WIN', 'WAT',
+                         'HYD', 'AIR', 'WHT']
 commons['MeritOrderHeat'] = ['GEO', 'NUC', 'LIG', 'HRD', 'BIO', 'GAS', 'OIL', 'PEA', 'WST', 'OTH', 'SUN', 'WIN', 'WAT',
                              'HYD', 'AIR', 'WHT', 'HeatSlack']
 # Colors associated with each fuel:

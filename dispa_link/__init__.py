@@ -3,6 +3,7 @@ from .search import *
 from .constants import *
 from .preprocessing.get_timeseries_energyscope import *
 from .preprocessing.get_capacities_energyscope import *
+from .postprocessing.plots import *
 from .dispa_link_functions import *
 
 def get_git_revision_tag():
