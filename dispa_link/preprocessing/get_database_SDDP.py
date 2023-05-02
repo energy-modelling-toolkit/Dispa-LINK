@@ -7,9 +7,25 @@ Created on Thu Apr 20 15:51:06 2023
 import pandas as pd
 import numpy as np
 from functools import reduce
+from mapping_SDDP import *
 import datetime
 
-def get_alert_level(hydro, SDDP_alert):
+condiciones, opciones, df_t = get_blocks_to_hours()
+start_date, end_date = '2025-12-31 23:00:00+00:00', '2026-12-31 23:00:00+00:00'
+
+def get_alert_level(hydro, SDDP_alert, start_date='2025-12-31 23:00:00+00:00', end_date='2026-12-31 23:00:00+00:00'):
+    """
+    Fucntion that returns alert levels
+    :param hydro:
+    :param SDDP_alert:
+    :param start_date:
+    :param end_date:
+    :return:            Alert leves df hourly time-series
+    """
+    #TODO: Fix all the function descriptions
+
+    #TODO: check if this should be activated by and if statement
+
     # #Activate for initial volume
     # df_new = pd.DataFrame(hydro[".VInic."]*hydro[".VMax.."]).T
     # df_new.columns = hydro['...Nombre...']
@@ -23,8 +39,8 @@ def get_alert_level(hydro, SDDP_alert):
     alertlev = alertlev.loc[144:195]
 
     #create the dataframe with hourly resolution
-    alertlev.set_index(pd.date_range(start='2025-12-31 23:00:00+00:00', end='2026-12-31 23:00:00+00:00', freq='W'), inplace=True)
-    alertlevh = pd.DataFrame(index=pd.date_range(start='2025-12-31 23:00:00+00:00', end='2026-12-31 23:00:00+00:00', freq='H'), 
+    alertlev.set_index(pd.date_range(start=start_date, end=end_date, freq='W'), inplace=True)
+    alertlevh = pd.DataFrame(index=pd.date_range(start=start_date, end=end_date, freq='H'),
                         columns=alertlev.columns)
     alertlevh.loc[alertlev.index, :] = alertlev.loc[alertlev.index, :]
     alertlevh.iloc[[0,-1],:] = alertlev.iloc[[0,0],:]
@@ -49,81 +65,10 @@ def get_demand(SDDP_demand, dfc, buslist):
     data_merge = data_merge.append(filtered_data_merge)
     data_merge = data_merge.reset_index(drop=True)
 
-    df_t = pd.DataFrame()
-    df_t['Datetime'] = pd.date_range(start='2021-12-31 23:00:00+00:00', end='2026-12-31 23:00:00+00:00', freq='H')
-    df_t = df_t.assign(Weekday=pd.DatetimeIndex(df_t.Datetime).weekday, Hour=pd.DatetimeIndex(df_t.Datetime).hour, Year = pd.DatetimeIndex(df_t.Datetime).year, Week =pd.DatetimeIndex(df_t.Datetime).week)
-    df_t['Block'] = " "
+#    df_t['Block'] = np.select(condiciones,opciones)
+#    df_t = df_t.drop(['Hour','Weekday'], axis=1)
+    #TODO: Please check that blocks are properly mapped
 
-    condiciones =[
-        #lunes
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] == 22),
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] >= 20)&(df_t['Hour'] <= 21),
-        #martes
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 22),
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 20),
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 21),
-        #miercoles                        
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 22),
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 20),
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 21),
-        #jueves                            
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 22),
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 20),
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 21),
-        #viernes                            
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 22),
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 20),
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 21),
-        #sabado              
-                  (df_t['Weekday'] == 5)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 5)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 5)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 5)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 5)&(df_t['Hour'] >= 19)&(df_t['Hour'] <= 22),
-                  
-        #domingo             
-                  (df_t['Weekday'] == 6)&(df_t['Hour'] >= 0)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 6)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 6)&(df_t['Hour'] >= 20)&(df_t['Hour'] <= 21),
-                  (df_t['Weekday'] == 6)&(df_t['Hour'] >= 22)&(df_t['Hour'] <= 23)
-                  ]   
-
-    opciones = [4,4,4,5,3,3,2,
-                4,4,4,5,3,3,1,2,
-                4,4,4,5,3,3,1,2,
-                4,4,4,5,3,3,1,2,
-                4,4,4,5,3,3,1,2,
-                4,4,4,5,3,
-                5,4,3,4
-                ] 
-
-    df_t['Block'] = np.select(condiciones,opciones)
-    df_t = df_t.drop(['Hour','Weekday'], axis=1)
     data_merge = data_merge.drop(['Datetime','Weekday'], axis=1)
     demand = pd.merge( df_t, data_merge,  how="left", on=['Year','Week', 'Block'])
 
@@ -157,6 +102,7 @@ def get_demand(SDDP_demand, dfc, buslist):
     return finaldemand
 
 def get_NTC(dfc):
+    #TODO: check if import can be moved to a different script (SDDP_dispa-mapping)
     dfc = pd.read_fwf('../../../Dispa-LINK/Inputs/SDDP/dcirc.dat',header=1,colspecs="infer", encoding='cp1252', engine='python')
     dfc.loc[:,'Name']=dfc['Nome........(MVAR)(Tmn)(Tmx)(  MW)(MW)'].str.slice(start=0,stop=12)
     dfc.loc[:,'MW']=dfc['Nome........(MVAR)(Tmn)(Tmx)(  MW)(MW)'].str.slice(start=28,stop=36).astype(float)
@@ -170,6 +116,7 @@ def get_NTC(dfc):
     dfc = pd.DataFrame(1,index=pd.date_range(start='2025-12-31 23:00:00+00:00', end='2026-12-31 23:00:00+00:00', freq='H'),columns=dfc.columns)*dfc.loc['MW',:]
 
     #lines between zones
+    #TODO: make as inuts defined by user
     lines = {'SU -> CE': ['POT-115 -> OCU-115','SUC-230 -> SAN-230','SUC-230 -> MIZ-230'],
            'CE -> SU': ['OCU-115 -> POT-115','SAN-230 -> SUC-230','MIZ-230 -> SUC-230'],
            'CE -> OR': ['CAR-230 -> YAP-230','CAR-230 -> ARB-230','CAR-500 -> BRE-500'],
@@ -250,6 +197,7 @@ def get_Outages(dft1,dft2, dfh1,dfv1):
     # Outages = pd.merge( outagesterm1, outageshydro,  how="left", on=['Datetime']).merge(outagesvres, how="left", on=['Datetime'])
 
     #Select year 2026 and delete hydro units that don't generate
+    #TODO: maybe drop becase it might not impact Dispa-SET simulation (dispaset doesnt read exces data from csv files)
     Outages = Outages.drop(['ANGLG','CRBLG','TIQLG','SRO02LG','CHJLG','CALACHAUM_LG','CALACHAKA_TO',
                             'CHUCALOMA_TO','CHACAJAHU_TO','CARABUCO_TO','UMAPALCA_CA','PALILLA01_CA',
                             'JALANCHA_TO','CALACHAMI_TO','PALILLA02_CA','CHORO_TO','KEWANI_TO',
@@ -351,6 +299,7 @@ def get_Power_PlantData(hydro,dft2,dfv1,dbus,buslist):
             ppd['Fuel']=='WIN',
             ppd['Fuel']=='SUN']
 
+    #TODO: improve it so that its part of the ppd dataframe
     opt1 = [1,0.35,0.35,0.31,1,1]
     opt2 = [0,0,0,0,0,0]
     opt3 = [0,0,0,0,0,0]
@@ -436,81 +385,8 @@ def get_renewables_AF(vresaf):
     filtered_vresaf['Week'] = filtered_vresaf['Week'].replace(52,53) 
     vresaf = vresaf.append(filtered_vresaf)
 
-    df_t = pd.DataFrame()
-    df_t['Datetime'] = pd.date_range(start='2021-12-31 23:00:00+00:00', end='2026-12-31 23:00:00+00:00', freq='H')
-    df_t = df_t.assign(Weekday=pd.DatetimeIndex(df_t.Datetime).weekday, Hour=pd.DatetimeIndex(df_t.Datetime).hour, Year = pd.DatetimeIndex(df_t.Datetime).year, Week =pd.DatetimeIndex(df_t.Datetime).week)
-    df_t['Block'] = " "
+    # TODO: Please check that blocks are properly mapped
 
-
-    condiciones =[
-        #lunes
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] == 22),
-                  (df_t['Weekday'] == 0)&(df_t['Hour'] >= 20)&(df_t['Hour'] <= 21),
-        #martes
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 22),
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 20),
-                  (df_t['Weekday'] == 1)&(df_t['Hour'] == 21),
-        #miercoles                        
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 22),
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 20),
-                  (df_t['Weekday'] == 2)&(df_t['Hour'] == 21),
-        #jueves                            
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 22),
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 20),
-                  (df_t['Weekday'] == 3)&(df_t['Hour'] == 21),
-        #viernes                            
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 22),
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 20),
-                  (df_t['Weekday'] == 4)&(df_t['Hour'] == 21),
-        #sabado              
-                  (df_t['Weekday'] == 5)&(df_t['Hour'] == 0), 
-                  (df_t['Weekday'] == 5)&(df_t['Hour'] == 23),
-                  (df_t['Weekday'] == 5)&(df_t['Hour'] >= 8)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 5)&(df_t['Hour'] >= 1)&(df_t['Hour'] <= 7),
-                  (df_t['Weekday'] == 5)&(df_t['Hour'] >= 19)&(df_t['Hour'] <= 22),
-                  
-        #domingo             
-                  (df_t['Weekday'] == 6)&(df_t['Hour'] >= 0)&(df_t['Hour'] <= 18),
-                  (df_t['Weekday'] == 6)&(df_t['Hour'] == 19), 
-                  (df_t['Weekday'] == 6)&(df_t['Hour'] >= 20)&(df_t['Hour'] <= 21),
-                  (df_t['Weekday'] == 6)&(df_t['Hour'] >= 22)&(df_t['Hour'] <= 23)
-                  ]   
-
-    opciones = [4,4,4,5,3,3,2,
-                4,4,4,5,3,3,1,2,
-                4,4,4,5,3,3,1,2,
-                4,4,4,5,3,3,1,2,
-                4,4,4,5,3,3,1,2,
-                4,4,4,5,3,
-                5,4,3,4
-                ] 
-
-    df_t['Block'] = np.select(condiciones,opciones)
         
     RenewablesAF = pd.merge( df_t, vresaf,  how="left", on=['Year','Week', 'Block'])
     RenewablesAF.set_index('Datetime',inplace=True, drop=True)
@@ -530,6 +406,12 @@ def get_Spillage_Cost(hydro):
     return Spilcost
 
 def get_Storage_lev(SDDP_lev,hydro):
+    """
+    This function returns storage levels for
+    :param SDDP_lev:
+    :param hydro:
+    :return:            Reservoir level df hourly times-eries
+    """
     hydro = hydro.reset_index()
     SDDP_lev.columns = SDDP_lev.columns.str.replace(' ', '')
     divisors = dict(zip(hydro['...Nombre...'], hydro['.VMax..']))

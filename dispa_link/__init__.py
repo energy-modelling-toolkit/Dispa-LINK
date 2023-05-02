@@ -5,6 +5,7 @@ from .preprocessing.get_timeseries_energyscope import *
 from .preprocessing.get_capacities_energyscope import *
 from .postprocessing.plots import *
 from .dispa_link_functions import *
+from .preprocessing.get_database_SDDP import *
 
 def get_git_revision_tag():
     """Get version of Dispa-LINK used for this run. tag + commit hash"""

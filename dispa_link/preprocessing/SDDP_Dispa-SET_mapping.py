@@ -8,6 +8,9 @@ import get_database_SDDP as sd
 import pandas as pd
 import os
 
+start_date, end_date = '2025-12-31 23:00:00+00:00', '2026-12-31 23:00:00+00:00'
+
+#TODO: user shoudl only specify folder where SDDP database was extracted (becase datafiles are standrdized and always have the same names)
 
 #Inputs for alert level
 SDDP_alert = pd.read_csv('../../../Dispa-LINK/Inputs/SDDP/volale.csv', index_col=0, header=3)
@@ -40,7 +43,7 @@ SDDP_lev = pd.read_csv('../../../Dispa-LINK/Inputs/SDDP/rvolfin.csv', encoding='
 InflowsSDDP = pd.read_fwf('../../../Dispa-LINK/Inputs/SDDP/hinflw_w.dat', header=0, colspecs="infer", engine='python')
 
 #Results
-alertlev = sd.get_alert_level(hydro,SDDP_alert)
+alertlev = sd.get_alert_level(hydro,SDDP_alert, start_date=start_date, end_date=end_date)
 finaldemand = sd.get_demand(SDDP_demand, dfc, buslist)
 ntc = sd.get_NTC(dfc)
 Outages = sd.get_Outages(dft1,dft2, dfh1,dfv1)
