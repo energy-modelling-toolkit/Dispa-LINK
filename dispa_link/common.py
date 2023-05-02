@@ -52,26 +52,9 @@ commons = {'TimeStep': '1h',
            'tech_heat': ['GETH', 'HOBO', 'SOTH'],
            'types_CHP': ['extraction', 'back-pressure', 'p2h'],
            'Fuels': ['AIR', 'BIO', 'GAS', 'HRD', 'LIG', 'NUC', 'OIL', 'PEA', 'SUN', 'WAT', 'WIN',
-                     'WST', 'OTH', 'GEO',
-                     'HYD', 'WHT'],
-           'MeritOrder': ['THMS', 'SCSP', 'BATS', 'BEVS', 'HDAM', 'HPHS', 'P2GS', 'FlowOut', 'GEO', 'NUC', 'LIG', 'HRD',
-                          'BIO', 'GAS', 'OIL', 'PEA', 'WST', 'OTH', 'SUN', 'WIN', 'FlowIn', 'WAT', 'HYD', 'AIR', 'WHT'],
-           'MeritFuels': ['GEO', 'NUC', 'LIG', 'HRD', 'BIO', 'AMO', 'GAS', 'OIL', 'PEA', 'WST', 'OTH', 'SUN', 'WIN',
-                          'WAT', 'HYD', 'AIR', 'WHT'],
-           'MeritOrderHeat': ['GEO', 'NUC', 'LIG', 'HRD', 'BIO', 'GAS', 'OIL', 'PEA', 'WST', 'OTH', 'SUN', 'WIN', 'WAT',
-                              'HYD', 'AIR', 'WHT', 'HeatSlack'],
-           'colors': {'NUC': 'orange', 'LIG': 'brown', 'HRD': 'grey', 'BIO': 'darkgreen', 'GAS': 'lightcoral',
-                      'OIL': 'chocolate', 'PEA': 'green', 'WST': 'dodgerblue', 'SUN': 'yellow', 'WIN': 'red',
-                      'FlowIn': 'green', 'WAT': 'blue', 'Storage': 'blue', 'FlowOut': 'green'}}
+                     'WST', 'OTH', 'GEO', 'HYD', 'WHT'],
+           }
 
-# Hatches associated with each fuel (random):
-hatches = itertools.cycle(['x', '//', '\\', '/'])
-commons['hatches']: Optional[List[str]] = {}
-for x in commons['colors']:
-    commons['hatches'][x] = next(hatches)
-
-# %%
-mapping = {}
 
 # %%
 def fix_na(series, fillzeros=True, verbose=True, name='', Nstd=4, outliers=None):
