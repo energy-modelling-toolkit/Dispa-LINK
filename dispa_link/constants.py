@@ -71,8 +71,7 @@ ind_heat_tech = ['IND_DIRECT_ELEC', 'IND_COGEN_GAS', 'IND_COGEN_WOOD', 'IND_COGE
                  'IND_BOILER_WASTE', 'IND_BOILER_COAL', 'IND_BOILER_WOOD', 'IND_BOILER_OIL', 'TS_HIGH_TEMP_Pin',
                  'TS_HIGH_TEMP_Pout']
 
-common = {}
-common['ES'] = {}
+common = {'ES': {}}
 common['ES']['h2_fix_dem'] = ['BUS_COACH_FC_HYBRIDH2', 'CAR_FUEL_CELL', 'TRUCK_FUEL_CELL', 'HABER_BOSCH',
                               'SYN_METHANOLATION', 'SYN_METHANATION', 'END_USE']
 common['ES']['h2_var_dem'] = []
@@ -126,8 +125,7 @@ ReservoirLevels = ['HPHS']
 
 # ---------------------------------------- DICO ----------------------------------------#
 # For the moment, the dico is in the file, but this will have to be read from a .txt file
-mapping = {}
-mapping['ES'] = {}
+mapping = {'ES': {}}
 
 # This dictionary is used to sort out wether a TECH is a PowerPlant, a CHP or a STO
 mapping['ES']['SORT'] = {u'CCGT': u'ELEC',
