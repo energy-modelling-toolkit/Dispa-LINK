@@ -14,10 +14,7 @@ gdxcc
 gamsxcc
 optcc
 proj
-cartopy
-geos
 scipy
-shapely
 pyproj
 pyshp
 tqdm
