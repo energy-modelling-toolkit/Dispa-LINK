@@ -1,13 +1,11 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import energyscope as es
-import dispaset as ds
-from ..common import *
-from ..search import *
-from ..constants import *
 
-def plot_convergence(LostLoad, ShedLoad, Curtailment, Error, iterations, nrows=6, ncols=1, figsize = (8, 12),
+from ..constants import mapping
+
+
+def plot_convergence(LostLoad, ShedLoad, Curtailment, Error, iterations, nrows=6, ncols=1, figsize=(8, 12),
                      gridspec_kw={'height_ratios': [1, 1, 1, 1, 1, 1]}, save_path='', curtailment=False):
     Error = Error / 1e9
     data_ens_curt = pd.DataFrame(index=['LostLoad', 'ShedLoad', 'Curtailment'], columns=iterations)
@@ -56,32 +54,41 @@ def plot_convergence(LostLoad, ShedLoad, Curtailment, Error, iterations, nrows=6
     data_ens_curt.loc[['ShedLoad', 'LostLoad']].T.plot(ax=axes[0], width=0.8, kind='bar', stacked=True, color=colors1,
                                                        alpha=0.8, legend='reverse',
                                                        title='Total Energy Not Served / Curtailed', ylabel='TWh')
-    data_ens_curt_max.loc[['ShedLoad', 'LostLoad']].T.plot(ax=axes[2], width=0.8, kind='bar', stacked=True, color=colors1,
+    data_ens_curt_max.loc[['ShedLoad', 'LostLoad']].T.plot(ax=axes[2], width=0.8, kind='bar', stacked=True,
+                                                           color=colors1,
                                                            alpha=0.8, legend=None,
                                                            title='Maximum Energy Not Served / Curtailed', ylabel='GW')
 
-    data_ens_curt_cons.loc[['ShedLoad', 'LostLoad']].T.plot(ax=axes[1], width=0.8, kind='bar', stacked=True, color=colors1,
+    data_ens_curt_cons.loc[['ShedLoad', 'LostLoad']].T.plot(ax=axes[1], width=0.8, kind='bar', stacked=True,
+                                                            color=colors1,
                                                             alpha=0.8, legend=None,
                                                             title='Maximum Consecutive Energy Not Served / Curtailed',
                                                             ylabel='TWh')
 
-    data_ens_curt_count.loc[['ShedLoad', 'LostLoad']].T.plot(ax=axes[3], width=0.8, kind='bar', stacked=True, color=colors1,
+    data_ens_curt_count.loc[['ShedLoad', 'LostLoad']].T.plot(ax=axes[3], width=0.8, kind='bar', stacked=True,
+                                                             color=colors1,
                                                              alpha=0.8, legend=None,
-                                                             title='Total Hours Energy Not Served / Curtailed', ylabel='h')
+                                                             title='Total Hours Energy Not Served / Curtailed',
+                                                             ylabel='h')
 
     data_ens_curt_cum_count.loc[['ShedLoad', 'LostLoad']].T.plot(ax=axes[4], width=0.8, kind='bar', stacked=True,
                                                                  color=colors1, alpha=0.8, legend=None,
-                                                                 title='Maximum Cumulative Hours Energy Not Served / Curtailed',
+                                                                 title='Maximum Cumulative Hours Energy Not Served / '
+                                                                       'Curtailed',
                                                                  ylabel='h')
     if curtailment is True:
-        data_ens_curt.loc[['Curtailment']].T.plot(ax=axes[0], color=colors2, linestyle='None', markersize=10.0, marker='o')
-        data_ens_curt_max.loc[['Curtailment']].T.plot(ax=axes[2], color=colors2, linestyle='None', markersize=10.0, marker='o',
+        data_ens_curt.loc[['Curtailment']].T.plot(ax=axes[0], color=colors2, linestyle='None', markersize=10.0,
+                                                  marker='o')
+        data_ens_curt_max.loc[['Curtailment']].T.plot(ax=axes[2], color=colors2, linestyle='None', markersize=10.0,
+                                                      marker='o',
                                                       legend=None)
-        data_ens_curt_cons.loc[['Curtailment']].T.plot(ax=axes[1], color=colors2, linestyle='None', markersize=10.0, marker='o',
+        data_ens_curt_cons.loc[['Curtailment']].T.plot(ax=axes[1], color=colors2, linestyle='None', markersize=10.0,
+                                                       marker='o',
                                                        legend=None)
         data_ens_curt_count.loc[['Curtailment']].T.plot(ax=axes[3], color=colors2, linestyle='None', markersize=10.0,
                                                         marker='o', legend=None)
-        data_ens_curt_cum_count.loc[['Curtailment']].T.plot(ax=axes[4], color=colors2, linestyle='None', markersize=10.0,
+        data_ens_curt_cum_count.loc[['Curtailment']].T.plot(ax=axes[4], color=colors2, linestyle='None',
+                                                            markersize=10.0,
                                                             marker='o', legend=None)
 
     Error.max().T.plot(ax=axes[5], width=0.8, kind='bar', stacked=True, color='red', alpha=0.8, legend=None,
@@ -90,12 +97,12 @@ def plot_convergence(LostLoad, ShedLoad, Curtailment, Error, iterations, nrows=6
     for i in [0, 1, 2, 3, 4, 5]:
         if i == 0 or i == 2:
             threshold = 5
-        elif i == 1 or i==5:
+        elif i == 1 or i == 5:
             threshold = 1
-        elif i==3:
+        elif i == 3:
             threshold = 250
         else:
-            threshold=50
+            threshold = 50
         for c in axes[i].containers:
             labels = [f'{v:.00f}' if v > threshold else "" for v in c.datavalues]
             axes[i].bar_label(c, labels=labels, label_type="center")
@@ -106,17 +113,14 @@ def plot_convergence(LostLoad, ShedLoad, Curtailment, Error, iterations, nrows=6
     fig.savefig(save_path)
     return data_ens_curt, data_ens_curt_max, data_ens_curt_cons, data_ens_curt_count, data_ens_curt_cum_count
 
+
 def plot_rug(df_series, on_off=False, cmap='Greys', fig_title='', fig_width=10, normalized=False):
     """Create multiaxis rug plot from pandas Dataframe
 
-    Arguments:
-        df_series (pd.DataFrame): 2D pandas with timed index
-        on_off (bool): if True all points that are above 0 will be plotted as one color. If False all values will be colored based on their value.
-        cmap (str): colormap name (from colorbrewer, matplotlib etc.)
-        fig_title (str): Figure title
-        normalized (bool): if True, all series colormaps will be normalized based on the maximum value of the dataframe
-    Returns:
-        plot
+    Arguments: df_series (pd.DataFrame): 2D pandas with timed index on_off (bool): if True all points that are above
+    0 will be plotted as one color. If False all values will be colored based on their value. cmap (str): colormap
+    name (from colorbrewer, matplotlib etc.) fig_title (str): Figure title normalized (bool): if True, all series
+    colormaps will be normalized based on the maximum value of the dataframe Returns: plot
     """
 
     def format_axis(iax):
@@ -189,15 +193,13 @@ def plot_rug(df_series, on_off=False, cmap='Greys', fig_title='', fig_width=10, 
 
 
 def plot_storage(es_outputs, max_loops, td_df, inputs, results, results_mts, save_path=''):
+    import energyscope as es
     el_layers = pd.DataFrame()
-    low_t_dhn_layers = pd.DataFrame()
     es_seasonal_storage_dhn = pd.DataFrame()
     es_seasonal_storage_h2 = pd.DataFrame()
-    es_seasonal_storage_phs = pd.DataFrame()
     ds_seasonal_storage_dhn = pd.DataFrame()
     ds_seasonal_storage_h2 = pd.DataFrame()
     es_seasonal_storage_dhn_chdch = pd.DataFrame()
-    ds_seasonal_storage_dhn_chdch = pd.DataFrame()
     es_storage_phs = pd.DataFrame()
     ds_storage_phs = pd.DataFrame()
     for i in range(max_loops):
@@ -207,14 +209,12 @@ def plot_storage(es_outputs, max_loops, td_df, inputs, results, results_mts, sav
         low_t_dhn_layers = es.from_td_to_year(es_outputs[i]['low_t_dhn_Layers'],
                                               td_df.rename({'TD': 'TD_number', 'hour': 'H_of_D'}, axis=1))
         es_seasonal_storage_dhn.loc[:, i] = es_outputs[i]['energy_stored']['TS_DHN_SEASONAL'] / \
-                                            es_outputs[i]['assets'].loc[
-                                                'TS_DHN_SEASONAL', 'f']
+                                            es_outputs[i]['assets'].loc['TS_DHN_SEASONAL', 'f']
         es_seasonal_storage_h2.loc[:, i] = es_outputs[i]['energy_stored']['H2_STORAGE'] / es_outputs[i]['assets'].loc[
             'H2_STORAGE', 'f']
         ds_seasonal_storage_dhn.loc[:, i] = results[i]['OutputSectorXStorageLevel']['ES_DHN']
         ds_seasonal_storage_h2.loc[:, i] = results[i]['OutputSectorXStorageLevel']['ES_H2']
         es_seasonal_storage_dhn_chdch = low_t_dhn_layers.loc[:, ['TS_DHN_SEASONAL_Pin', 'TS_DHN_SEASONAL_Pout']]
-        ds_seasonal_storage_dhn_chdch = results[i]['OutputSectorXStorageInput']
         es_storage_phs.loc[:, i] = es_outputs[i]['energy_stored']['PHS'] / es_outputs[i]['assets'].loc['PHS', 'f']
         ds_storage_phs.loc[:, i] = results[i]['OutputStorageLevel']['[8] - ES_PHS']
 
@@ -258,10 +258,9 @@ def plot_storage(es_outputs, max_loops, td_df, inputs, results, results_mts, sav
 
     dunkel1 = pd.DataFrame(rolling.between(0, dunkelflaute_1).astype('int'))
     dunkel2 = pd.DataFrame(rolling.between(dunkelflaute_1, dunkelflaute_2).astype('int'))
-    dunkel3 = pd.DataFrame(rolling.between(dunkelflaute_2, dunkelflaute_3).astype('int'))
 
     # Initialize figure and axis
-    fig, ax = plt.subplots(nrows=4, ncols=1, sharex=True, figsize = (8, 12))
+    fig, ax = plt.subplots(nrows=4, ncols=1, sharex=True, figsize=(8, 12))
 
     for j in range(4):
         i = max_loops - 1
@@ -303,7 +302,8 @@ def plot_storage(es_outputs, max_loops, td_df, inputs, results, results_mts, sav
             )
             ax[j].set(ylabel='State of the charge [-]')
 
-            ax2.plot(water_value.index, water_value.values, color='red', linestyle='--', linewidth=1, label='Shadow Price')
+            ax2.plot(water_value.index, water_value.values, color='red', linestyle='--', linewidth=1,
+                     label='Shadow Price')
             ax2.set(ylabel='Shadow Price [EUR/MWh]')
 
         else:
@@ -347,6 +347,7 @@ def plot_storage(es_outputs, max_loops, td_df, inputs, results, results_mts, sav
 
 
 def plot_capacity_energy_mix(inputs, results, es_outputs, ShedLoad, LostLoad, max_loops, save_path=''):
+    import dispaset as ds
     r = {}
     DS_generation = pd.DataFrame()
     ES_generation = pd.DataFrame()
@@ -440,4 +441,3 @@ def plot_capacity_energy_mix(inputs, results, es_outputs, ShedLoad, LostLoad, ma
     plt.subplots_adjust(left=0.12, bottom=0.1, right=0.85, top=0.95, wspace=0.2, hspace=0.2)
     plt.show()
     fig.savefig(save_path)
-
