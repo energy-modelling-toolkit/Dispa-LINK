@@ -1,6 +1,5 @@
 import glob
 import logging
-import energyscope as es
 
 from .common import *
 from .constants import *
@@ -466,22 +465,6 @@ def process_TD(td_final):
     td_hourly['TD'] = td_hourly['day'].map(mapping_td)
 
     return td_hourly
-
-
-# compute outage factors for technologies using local resources (WOOD, WET_BIOMASS, WASTE)
-def compute_outage_factor(config_es, assets, layer_name: str):
-    """Computes the Outage Factor in a layer for each TD
-    :param config_es:   EnergyScope config
-    :param assets:      EnergyScope assets
-    :param layer_name:  Name of the layer to compute outages
-    :return :           Outage factors for the layer
-    """
-
-    layer = es.read_layer(config_es['case_study'], 'layer_' + layer_name).dropna(axis=1)
-    layer = layer.loc[:, layer.min(axis=0) < -0.01]
-    layer = layer / config_es['all_data']['Layers_in_out'].loc[layer.columns, layer_name]  # compute GWh of output layer
-    layer = 1 - layer / assets.loc[layer.columns, 'f']
-    return layer.loc[:, layer.max(axis=0) > 1e-3]
 
 
 def clean_blanks(df, cols=True, idx=True):

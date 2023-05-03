@@ -15,10 +15,10 @@ Output : Database/Heat_demand/##/... .csv
 from __future__ import division
 
 import pandas as pd
+import logging
 
-from ..search import *
-from ..common import *
-from ..constants import *
+from ..search import assign_td, write_csv_files, clean_blanks
+from ..constants import grid_losses_list, mapping, common
 
 
 def get_electricity_demand(es_outputs, td_df, drange, countries=['ES'], write_csv=True, file_name='Load'):
@@ -78,37 +78,52 @@ def get_heat_demand(es_outputs, td_df, drange, countries=None, write_csv=True, f
         heat_es_input.set_index(drange, inplace=True)
 
     # %% export to csv file
-    if dispaset_version == '2.5':
-        if write_csv:
-            write_csv_files(file_name, heat_es_input, 'HeatDemand', index=True, write_csv=True, heating=True)
+    if dispaset_version == '2.5' and write_csv:
+        write_csv_files(file_name, heat_es_input, 'HeatDemand', index=True, write_csv=True, heating=True)
 
     return heat_es_input
 
 
-def get_x_demand(X_layer, td_df, drange, write_csv=True, file_name='H2_demand', dispaset_version='2.5', columns=[],
+def get_x_demand(layer_x, td_df, drange, write_csv=True, file_name='H2_demand', dispaset_version='2.5', columns=[],
                  layer_name=''):
     """
     Get h2 demand from ES and convert it into DS demand timeseries
-    :param X_layer:    H2 inputs layer
+    :param layer_x:    H2 inputs layer
     :param td_df:       typical day assignment
     :param write_csv:   write csv files
     :return:            h2 demand timeseries
     """
-    X_layer = clean_blanks(X_layer, idx=False)
-    X_layer = X_layer.dropna(axis=1, how='all')
-    X_layer = X_layer.loc[:, columns]
+    layer_x = clean_blanks(layer_x, idx=False)
+    layer_x = layer_x.dropna(axis=1, how='all')
+    layer_x = layer_x.loc[:, columns]
     # computing consumption of H2
     # TODO automatise name zone assignment
-    x_td = pd.DataFrame(X_layer.sum(axis=1), columns=[layer_name])
+    x_td = pd.DataFrame(layer_x.sum(axis=1), columns=[layer_name])
     x_ts = assign_td(x_td, td_df) * 1000  # Convert to MW
     x_ts.set_index(drange, inplace=True)
     if dispaset_version == '2.5':
         x_max_demand = pd.DataFrame(x_ts.max(), columns=['Capacity'])
-    if write_csv:
-        if dispaset_version == '2.5':
-            write_csv_files(file_name, x_ts, 'H2_demand', index=True, write_csv=True)
-            write_csv_files('PtLCapacities', x_max_demand, 'H2_demand', index=True, write_csv=True)
+    if write_csv and dispaset_version == '2.5':
+        write_csv_files(file_name, x_ts, 'H2_demand', index=True, write_csv=True)
+        write_csv_files('PtLCapacities', x_max_demand, 'H2_demand', index=True, write_csv=True)
     return x_ts
+
+
+# compute outage factors for technologies using local resources (WOOD, WET_BIOMASS, WASTE)
+def compute_outage_factor(config_es, assets, layer_name: str):
+    """Computes the Outage Factor in a layer for each TD
+    :param config_es:   EnergyScope config
+    :param assets:      EnergyScope assets
+    :param layer_name:  Name of the layer to compute outages
+    :return :           Outage factors for the layer
+    """
+    import energyscope as es
+
+    layer = es.read_layer(config_es['case_study'], 'layer_' + layer_name).dropna(axis=1)
+    layer = layer.loc[:, layer.min(axis=0) < -0.01]
+    layer = layer / config_es['all_data']['Layers_in_out'].loc[layer.columns, layer_name]  # compute GWh of output layer
+    layer = 1 - layer / assets.loc[layer.columns, 'f']
+    return layer.loc[:, layer.max(axis=0) > 1e-3]
 
 
 def get_outage_factors(config_es, es_outputs, local_res, td_df, drange, write_csv=True):
@@ -135,15 +150,13 @@ def get_outage_factors(config_es, es_outputs, local_res, td_df, drange, write_cs
     return outage_factors_yr
 
 
-def get_soc(es_outputs, config_es, drange, sto_size_min=0.01, countries=None, write_csv=True,
-            file_name='ReservoirLevels'):
+def get_soc(es_outputs, config_es, drange, sto_size_min=0.01, write_csv=True, file_name='ReservoirLevels'):
     """
     Compute the state of the charge of storage technologies
     :param es_outputs:      EnergyScope outputs
     :param config_es:       EnergyScope config file
     :param drange:          Date range
     :param sto_size_min:    Minimum storage size to be considered
-    :param countries:       Countries to iterate over
     :param write_csv:       Bool for writing csv files True/False
     :param file_name:       Name of the csv file
     :return:                State of the charge
@@ -166,7 +179,6 @@ def get_availability_factors(es_outputs, drange, countries=['ES'], write_csv=Tru
     """
     Get availability factors from Energy Scope and covert them to Dispa-SET readable format
     :param es_outputs:      EnergyScope outputs
-    :param config_es:       EnergyScope config file
     :param drange:          Date range
     :param countries:       Countries to iterate over
     :param write_csv:       Bool for writing csv files True/False
@@ -217,19 +229,17 @@ def get_availability_factors(es_outputs, drange, countries=['ES'], write_csv=Tru
     return res_timeseries
 
 
-def get_ev_demand(es_outputs, td_df, ds_inputs, drange, countries=['ES'], write_csv=True, file_name='EV_Load'):
+def get_ev_demand(es_outputs, td_df, ds_inputs, drange, write_csv=True, file_name='EV_Load'):
     """
     Compute electricity demand for electric vehicles and convert it to dispaset readable format, i.e. csv time series
     :param es_outputs:  EnergyScope outputs
     :param td_df:       Typical day dataframe
     :param drange:      Date range
-    :param countries:   Countries to apply the mapping function on
     :param write_csv:   Bool for creating csv file True/False
     :param file_name:   Name of the csv file
     :return:            ev_demand
     """
     electricity_layers = assign_td(es_outputs['electricity_layers'], td_df) * 1000
-    demand_cols = ['CAR_PHEV', 'CAR_BEV']
     ev_cols = ['ES_PHEV_BATT', 'ES_BEV_BATT']
     ev_scaled_demand = pd.DataFrame()
     for ev in ev_cols:
@@ -264,7 +274,8 @@ def merge_timeseries_x(ds_inputs, df, td_df, drange, dispaset_version, i):
     # Assign fixed demands in Sector X
     ds_inputs['XFixDemand'][i] = - cocncat_ts(ds_inputs, df, td_df, drange, dispaset_version, i,
                                               var_name='XFixDemand',
-                                              # layers=['h2', 'ammonia', 'gas', 'ind', 'dhn', 'dec', 'wood', 'lfo', 'coal', 'waste'])
+                                              # layers=['h2', 'ammonia', 'gas', 'ind', 'dhn', 'dec', 'wood', 'lfo',
+                                              # 'coal', 'waste'])
                                               layers=['h2', 'ammonia', 'ind', 'dhn', 'dec', 'wood', 'lfo', 'coal',
                                                       'waste'])
     # Assign Variable Demands in Sector X
@@ -279,7 +290,8 @@ def merge_timeseries_x(ds_inputs, df, td_df, drange, dispaset_version, i):
     ds_inputs['XVarSupply'][i] = cocncat_ts(ds_inputs, df, td_df, drange, dispaset_version, i,
                                             var_name='XVarSupply',
                                             # layers=['h2', 'ammonia', 'gas', 'wood', 'lfo', 'coal', 'waste'])
-                                            layers=['h2', 'ammonia', 'ind', 'dhn', 'dec', 'wood', 'lfo', 'coal', 'waste'])
+                                            layers=['h2', 'ammonia', 'ind', 'dhn', 'dec', 'wood', 'lfo', 'coal',
+                                                    'waste'])
     return ds_inputs
 
 
@@ -324,11 +336,11 @@ def cocncat_ts(ds_inputs, df, td_df, drange, dispaset_version, i, var_name='XVar
             }
 
     ds_inputs[var_name][i] = pd.DataFrame()
-    for l in layers:
+    for layer in layers:
         ds_inputs[var_name][i] = pd.concat([ds_inputs[var_name][i],
-                                            get_x_demand(df[mpng['layer'][l]], td_df, drange,
+                                            get_x_demand(df[mpng['layer'][layer]], td_df, drange,
                                                          dispaset_version=dispaset_version,
-                                                         columns=common['ES'][l + mpng['lookup'][var_name]],
-                                                         layer_name=mpng['layer_name'][l])], axis=1)
+                                                         columns=common['ES'][layer + mpng['lookup'][var_name]],
+                                                         layer_name=mpng['layer_name'][layer])], axis=1)
 
     return ds_inputs[var_name][i]

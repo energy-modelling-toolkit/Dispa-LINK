@@ -1,14 +1,14 @@
 import logging
-import math
 import sys
 
 import numpy as np
 import pandas as pd
 
-from ..search import *  # line to import the dictionary
-from ..constants import *  # line to import the dictionary
+from ..constants import mapping, n_TD  # line to import the dictionary
+from ..dispa_link_functions import define_units, assign_parameters, assign_gas_units, assign_parameters_by_index, \
+    assign_zone, assign_typical_values
 from ..preprocessing.get_timeseries_energyscope import get_x_demand
-from ..dispa_link_functions import *
+from ..search import sto_dhn, write_csv_files, column_names_bs, column_names  # line to import the dictionary
 
 
 def get_capacities_from_es(es_outputs, typical_units, td_df, zone=None, write_csv=True, file_name='PowerPlants',
