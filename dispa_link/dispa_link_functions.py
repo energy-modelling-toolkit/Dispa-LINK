@@ -1,11 +1,10 @@
-import logging
 import math
-import sys
 import pandas as pd
+import logging
+import sys
+import numpy as np
 
-from .search import *  # line to import the dictionary
-from .constants import *  # line to import the dictionary
-
+from .search import column_names  # line to import the dictionary
 
 typical_mapping = {'Parameters': ['MinUpTime', 'MinDownTime', 'RampUpRate', 'RampDownRate', 'PartLoadMin',
                                   'MinEfficiency', 'StartUpTime', 'StartUpCost_pu', 'NoLoadCost_pu',
@@ -19,7 +18,7 @@ def define_units(names):
     :return:        power plant database in Dispa-SET readable format
     """
     power_plants = pd.DataFrame(columns=column_names, index=names)
-    logging.info('All unit names (' + ' '.join(map(str,names)) + ') assigned to the power plant DataFrame.')
+    logging.info('All unit names (' + ' '.join(map(str, names)) + ') assigned to the power plant DataFrame.')
     return power_plants
 
 
@@ -49,9 +48,9 @@ def assign_parameters_by_index(power_plants, idx, parameters, values):
         power_plants.loc[idx, parameters] = values
     else:
         power_plants.loc[power_plants.index == idx, parameters] = values
-    logging.info('Mapping of source model parameters (' + ', '.join(map(str,parameters)) + ') for ' + str(idx) +
+    logging.info('Mapping of source model parameters (' + ', '.join(map(str, parameters)) + ') for ' + str(idx) +
                  ' to Dispa-SET readable parameters (' +
-                 ', '.join(map(str,parameters)) + ') complete!')
+                 ', '.join(map(str, parameters)) + ') complete!')
     return power_plants
 
 
@@ -59,6 +58,8 @@ def assign_gas_units(power_plants, comc=1, gt=1, stur=1, source_name='CCGT', sou
                      gt_name='OCGT', comc_name='CCGT', stur_name='STUR', x=True):
     """
     Assign one capacity to multiple technologies, i.e. one gas technology to multiple gas technologies (1-M mapping)
+    :param x:               Sector X
+    :param source_fuel:     source fuel
     :param power_plants:    power plant database in Dispa-SET readable format
     :param comc:            share of combined cycle
     :param gt:              share of gas turbines
@@ -87,6 +88,7 @@ def assign_typical_values(power_plants, typical_units, exclude=['CHP', 'P2GS'], 
                           power_conversion=1000, storage_conversion=1000, dispaset_version='2.5_BS'):
     """
     Function that assigns typical values from the typical units table.
+    :param dispaset_version:    dispaset version '2.5_BS'
     :param power_plants:        power plant database in Dispa-SET readable format
     :param typical_units:       typical units dataframe
     :param exclude:             list of units to exclude (located in the SORT column)
@@ -101,14 +103,14 @@ def assign_typical_values(power_plants, typical_units, exclude=['CHP', 'P2GS'], 
         tech = series['Technology']
         fuel = series['Fuel']
         chp_type = series['CHPType']
-        #TODO: check if ok
+        # TODO: check if ok
         if 'CHP' in exclude:
             typical_row = typical_units.loc[(typical_units['Technology'] == tech) & (typical_units['Fuel'] == fuel)]
         elif 'CHP' not in exclude:
             typical_row = typical_units.loc[(typical_units['Technology'] == tech) & (typical_units['Fuel'] == fuel) &
                                             (typical_units['CHPType'] == chp_type)]
 
-            if (typical_row.empty) & (chp_type == 'back-pressure'):
+            if typical_row.empty & (chp_type == 'back-pressure'):
                 logging.error('There was no correspondence for the COGEN ' + tech + '_' + fuel + '_' + chp_type +
                               ' in the Typical_Units file (' + index + ')')
                 logging.info('Try to find information for ' + tech + fuel + ' and CHPType : Extraction')
@@ -117,7 +119,7 @@ def assign_typical_values(power_plants, typical_units, exclude=['CHP', 'P2GS'], 
                 typical_row = typical_units.loc[
                     (typical_units['Technology'] == tech) & (typical_units['Fuel'] == fuel) & (
                             typical_units['CHPType'] == chp_type2)]
-                if not (typical_row.empty):
+                if not typical_row.empty:
                     logging.info('Data has been found for ' + tech + '_' + fuel +
                                  ' the CHPType Extraction ; will be set as back-pressure for DS model though')
         else:
@@ -129,7 +131,7 @@ def assign_typical_values(power_plants, typical_units, exclude=['CHP', 'P2GS'], 
                           ' in the Typical_Units file' + '(' + index + '). So the Technology ' + tech + ' and fuel ' +
                           fuel + ' will be dropped from dataset')
 
-            #FIXME: IS THIS the best way to handle the lack of presence in Typical_Units ? - TO IMPROVE
+            # FIXME: IS THIS the best way to handle the lack of presence in Typical_Units ? - TO IMPROVE
             if 'CHP' in exclude:
                 power_plants.drop(index, inplace=True)
 
@@ -177,7 +179,8 @@ def assign_typical_values(power_plants, typical_units, exclude=['CHP', 'P2GS'], 
                 # END of the carac loop
 
             # 1) Capacity from source model is in GW/GWh -> set it in MW/MWh
-            power_plants.loc[index, 'PowerCapacity'] = float(power_plants.loc[index, 'PowerCapacity']) * power_conversion
+            power_plants.loc[index, 'PowerCapacity'] = float(
+                power_plants.loc[index, 'PowerCapacity']) * power_conversion
             power_plants.loc[index, 'STOCapacity'] = float(power_plants.loc[index, 'STOCapacity']) * storage_conversion
 
             if ('P2GS' not in exclude) and (dispaset_version == '2.5_BS'):
@@ -215,10 +218,10 @@ def assign_typical_values(power_plants, typical_units, exclude=['CHP', 'P2GS'], 
             if float(power_plants.loc[index, 'STOCapacity']) > 0:
                 # Access the row and column of a dataframe : to get to STOCapacity of the checked tech
                 if number_units >= 1:
-                    power_plants.loc[index, 'STOCapacity'] = float(power_plants.loc[index, 'STOCapacity']) / number_units
-                    power_plants.loc[index, 'STOMaxChargingPower'] = float(power_plants.loc[index, 'STOMaxChargingPower']) / \
-                                                                     number_units
-
+                    power_plants.loc[index, 'STOCapacity'] = \
+                        float(power_plants.loc[index, 'STOCapacity']) / number_units
+                    power_plants.loc[index, 'STOMaxChargingPower'] = \
+                        float(power_plants.loc[index, 'STOMaxChargingPower']) / number_units
     return power_plants
 
 
