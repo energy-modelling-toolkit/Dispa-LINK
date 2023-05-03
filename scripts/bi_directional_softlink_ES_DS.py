@@ -502,7 +502,7 @@ axes[1].set_ylabel('Net energy surplus/deficit [MWh]')
 plt.show()
 
 # Plot soft-linking statistics
-dl.plot_convergence(LostLoad, ShedLoad, Curtailment, Error, iterations,
+dl.plot_convergence(LostLoad, ShedLoad, Curtailment, Error, iterations, figsize=(8, 12),
                  save_path='E:/OneDrive/KU Leuven/PhD/Thesis/LaTex/chapters/application3/image/BD_SL_Summary_' +
                            case_study + '.png')
 
@@ -514,14 +514,14 @@ for i in range(5):
 dl.plot_rug(data_heatmap, cmap='Reds', fig_title='ENS - Curtailment comparison')
 
 # Plot storage
-dl.plot_storage(es_outputs, max_loops, td_df, inputs, results,
+dl.plot_storage(es_outputs, max_loops, td_df, inputs, results, results_mts=results_mts,
                 save_path='E:/OneDrive/KU Leuven/PhD/Thesis/LaTex/chapters/application3/image/Seasonal_DHN.png')
 
-
+#
 
 dl.plot_capacity_energy_mix(inputs, results, es_outputs, ShedLoad, LostLoad, max_loops,
                             save_path='E:/OneDrive/KU Leuven/PhD/Thesis/LaTex/chapters/application3/image/Capacity_Energy_Mix.png',
-                           )
+                            )
 # Plots
 import pandas as pd
 

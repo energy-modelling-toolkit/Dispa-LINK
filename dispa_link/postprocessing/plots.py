@@ -7,9 +7,9 @@ from ..common import *
 from ..search import *
 from ..constants import *
 
-def plot_convergence(LostLoad, ShedLoad, Curtailment, Error, iterations, nrows=6, ncols=1, figsize = (10, 15),
+def plot_convergence(LostLoad, ShedLoad, Curtailment, Error, iterations, nrows=6, ncols=1, figsize = (8, 12),
                      gridspec_kw={'height_ratios': [1, 1, 1, 1, 1, 1]}, save_path='', curtailment=False):
-
+    Error = Error / 1e9
     data_ens_curt = pd.DataFrame(index=['LostLoad', 'ShedLoad', 'Curtailment'], columns=iterations)
     data_ens_curt.loc['LostLoad', :] = LostLoad.sum(axis=0) / 1e6  # to TWh
     data_ens_curt.loc['ShedLoad', :] = ShedLoad.sum(axis=0) / 1e6  # to TWh
@@ -85,7 +85,21 @@ def plot_convergence(LostLoad, ShedLoad, Curtailment, Error, iterations, nrows=6
                                                             marker='o', legend=None)
 
     Error.max().T.plot(ax=axes[5], width=0.8, kind='bar', stacked=True, color='red', alpha=0.8, legend=None,
-                       title='Optimization error - check', ylabel='-')
+                       title='Optimization error - check', ylabel='billion EUR')
+
+    for i in [0, 1, 2, 3, 4, 5]:
+        if i == 0 or i == 2:
+            threshold = 5
+        elif i == 1 or i==5:
+            threshold = 1
+        elif i==3:
+            threshold = 250
+        else:
+            threshold=50
+        for c in axes[i].containers:
+            labels = [f'{v:.00f}' if v > threshold else "" for v in c.datavalues]
+            axes[i].bar_label(c, labels=labels, label_type="center")
+    plt.xticks(rotation=0)
     plt.tight_layout()
     fig.align_ylabels()
     plt.show()
@@ -174,7 +188,7 @@ def plot_rug(df_series, on_off=False, cmap='Greys', fig_title='', fig_width=10, 
     plt.show()
 
 
-def plot_storage(es_outputs, max_loops, td_df, inputs, results, save_path=''):
+def plot_storage(es_outputs, max_loops, td_df, inputs, results, results_mts, save_path=''):
     el_layers = pd.DataFrame()
     low_t_dhn_layers = pd.DataFrame()
     es_seasonal_storage_dhn = pd.DataFrame()
@@ -247,52 +261,66 @@ def plot_storage(es_outputs, max_loops, td_df, inputs, results, save_path=''):
     dunkel3 = pd.DataFrame(rolling.between(dunkelflaute_2, dunkelflaute_3).astype('int'))
 
     # Initialize figure and axis
-    fig, ax = plt.subplots(nrows=4, ncols=1, sharex=True, figsize=(8, 8))
+    fig, ax = plt.subplots(nrows=4, ncols=1, sharex=True, figsize = (8, 12))
 
     for j in range(4):
         i = max_loops - 1
         if j == 0:
             seasonal_storage = seasonal_storage_dhn
+            water_value = results_mts[4]['OutputSectorXStorageShadowPrice']['ES_DHN']
         elif j == 1:
             seasonal_storage = seasonal_storage_h2
+            water_value = results_mts[4]['OutputSectorXStorageShadowPrice']['ES_H2']
         elif j == 2:
             seasonal_storage = storage_phs
+            water_value = results_mts[4]['StorageShadowPrice']['[8] - ES_PHS']
         if j < 4 - 1:
             # Plot lines
-            ax[j].plot(seasonal_storage[i].index, seasonal_storage[i].loc[:, 'ES'], color="black", linewidth=0.5,
-                       label='EnergyScope')
-            ax[j].plot(seasonal_storage[i].index, seasonal_storage[i].loc[:, 'DS'], color="blue", linewidth=0.5,
-                       label='Dispa-SET')
-            # Fill area when income > expenses with green
-            ax[j].fill_between(
-                seasonal_storage[i].index, seasonal_storage[i].loc[:, 'ES'], seasonal_storage[i].loc[:, 'DS'],
-                where=(seasonal_storage[i].loc[:, 'ES'] > seasonal_storage[i].loc[:, 'DS']),
-                interpolate=True, color="green", alpha=0.25, label="Overestimation")
+            ax2 = ax[j].twinx()
+            ax[j].plot(seasonal_storage[i].index, seasonal_storage[i].loc[:, 'ES'], color="black", linewidth=0.5)
+            ax[j].plot(seasonal_storage[i].index, seasonal_storage[i].loc[:, 'DS'], color="black", linewidth=0.5)
+            # # Fill area when income > expenses with green
+            # ax[j].fill_between(
+            #     seasonal_storage[i].index, seasonal_storage[i].loc[:, 'ES'], seasonal_storage[i].loc[:, 'DS'],
+            #     where=(seasonal_storage[i].loc[:, 'ES'] > seasonal_storage[i].loc[:, 'DS']),
+            #     interpolate=True, color="gold", alpha=0.25, label="Overestimation")
+            # # Fill area when income <= expenses with red
+            # ax[j].fill_between(
+            #     seasonal_storage[i].index, seasonal_storage[i].loc[:, 'ES'], seasonal_storage[i].loc[:, 'DS'],
+            #     where=(seasonal_storage[i].loc[:, 'ES'] < seasonal_storage[i].loc[:, 'DS']),
+            #     interpolate=True, color="orange", alpha=0.25,
+            #     label="Underestimation"
+            # )
 
+            ax[j].fill_between(
+                seasonal_storage[i].index, seasonal_storage[i].loc[:, 'ES'], 0,
+                interpolate=True, color="gold", alpha=0.25, label="EnergyScope")
             # Fill area when income <= expenses with red
             ax[j].fill_between(
-                seasonal_storage[i].index, seasonal_storage[i].loc[:, 'ES'], seasonal_storage[i].loc[:, 'DS'],
-                where=(seasonal_storage[i].loc[:, 'ES'] < seasonal_storage[i].loc[:, 'DS']),
-                interpolate=True, color="red", alpha=0.25,
-                label="Underestimation"
+                seasonal_storage[i].index, seasonal_storage[i].loc[:, 'DS'], 0,
+                interpolate=True, color="deepskyblue", alpha=0.25,
+                label="Dispa-SET"
             )
             ax[j].set(ylabel='State of the charge [-]')
+
+            ax2.plot(water_value.index, water_value.values, color='red', linestyle='--', linewidth=1, label='Shadow Price')
+            ax2.set(ylabel='Shadow Price [EUR/MWh]')
 
         else:
             ax[j].plot(seasonal_storage[i].index, total_availability.values, color="black", linestyle='dashed',
                        label='VRES availability', alpha=0.9, linewidth=0.5)
-            ax[j].axhline(y=dunkelflaute_1, color='red', alpha=0.9, linewidth=0.7)
-            ax[j].axhline(y=dunkelflaute_2, color='orange', alpha=0.9, linewidth=0.7)
-            ax[j].axhline(y=dunkelflaute_3, color='gold', alpha=0.9, linewidth=0.7)
+            ax[j].axhline(y=dunkelflaute_1, color='crimson', alpha=0.9, linewidth=0.7)
+            ax[j].axhline(y=dunkelflaute_2, color='deeppink', alpha=0.9, linewidth=0.7)
+            ax[j].axhline(y=dunkelflaute_3, color='lightpink', alpha=0.9, linewidth=0.7)
             ax[j].set(ylabel='Availability [-]')
-            ax[j].fill_between(seasonal_storage[i].index, dunkel3.loc[:, 0], 0, where=(dunkel3.loc[:, 0] > 0),
-                               interpolate=False, color="gold", alpha=0.9,
-                               label="Low < " + str(dunkelflaute_3 * 100) + "%")
+            # ax[j].fill_between(seasonal_storage[i].index, dunkel3.loc[:, 0], 0, where=(dunkel3.loc[:, 0] > 0),
+            #                    interpolate=False, color="lightpink", alpha=0.9,
+            #                    label="Low < " + str(dunkelflaute_3 * 100) + "%")
             ax[j].fill_between(seasonal_storage[i].index, dunkel2.loc[:, 0], 0, where=(dunkel2.loc[:, 0] > 0),
-                               interpolate=False, color="orange", alpha=0.9,
+                               interpolate=False, color="lightpink", alpha=0.9,
                                label="Critical < " + str(dunkelflaute_2 * 100) + "%")
             ax[j].fill_between(seasonal_storage[i].index, dunkel1.loc[:, 0], 0, where=(dunkel1.loc[:, 0] > 0),
-                               interpolate=False, color="red", alpha=0.9,
+                               interpolate=False, color="crimson", alpha=0.9,
                                label="Extreme < " + str(dunkelflaute_1 * 100) + "%")
 
             ax[j].set_ylim(top=1)
@@ -308,8 +336,9 @@ def plot_storage(es_outputs, max_loops, td_df, inputs, results, save_path=''):
         ax[j].set_title(title)
 
     handles, labels = ax[0].get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
     handles1, labels1 = ax[j].get_legend_handles_labels()
-    fig.legend(handles=handles + handles1, loc="lower left", mode="expand", ncol=4)
+    fig.legend(handles=handles + handles2 + handles1, loc="lower left", mode="expand", ncol=3)
     fig.align_ylabels()
     plt.subplots_adjust(left=0.12, bottom=0.1, right=0.9, top=0.95, wspace=0.2, hspace=0.2)
     plt.show()
