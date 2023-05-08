@@ -5,9 +5,12 @@ def get_blocks_to_hours(start_date='2021-12-31 23:00:00+00:00', end_date='2026-1
 
     df_t = pd.DataFrame()
     df_t['Datetime'] = pd.date_range(start=start_date, end=end_date, freq='H')
-    df_t = df_t.assign(Weekday=pd.DatetimeIndex(df_t.Datetime).weekday, Hour=pd.DatetimeIndex(df_t.Datetime).hour, Year = pd.DatetimeIndex(df_t.Datetime).year, Week =pd.DatetimeIndex(df_t.Datetime).week)
+    df_t = df_t.assign(Weekday=df_t['Datetime'].dt.weekday, Hour=pd.DatetimeIndex(df_t.Datetime).hour, Year=df_t['Datetime'].dt.isocalendar().year.astype('int32'), Week=df_t['Datetime'].dt.isocalendar().week.astype('int32'))
     df_t['Block'] = " "
 
+
+    # data_merge = data_merge.assign(Weekday=data_merge['Datetime'].dt.weekday, Week=data_merge['Datetime'].dt.isocalendar().week, Year=data_merge['Datetime'].dt.isocalendar().year)
+    
     condiciones =[
         # lunes
         (df_t['Weekday'] == 0) & (df_t['Hour'] == 0),
@@ -77,6 +80,6 @@ def get_blocks_to_hours(start_date='2021-12-31 23:00:00+00:00', end_date='2026-1
                 ]
 
     df_t['Block'] = np.select(condiciones,opciones)
-    df_t = df_t.drop(['Hour','Weekday'], axis=1)
+    # df_t = df_t.drop(['Hour','Weekday'], axis=1)
 
-    return condiciones, opciones, df_t
+    return df_t
