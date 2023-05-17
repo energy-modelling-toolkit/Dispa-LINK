@@ -6,11 +6,10 @@ Created on Thu Apr 20 15:51:06 2023
 import pandas as pd
 import numpy as np
 from functools import reduce
-from mapping_SDDP import *
+from .mapping_SDDP import *
 import datetime
 
 df_t = get_blocks_to_hours()
-# start_date, end_date = '2025-12-31 23:00:00+00:00', '2026-12-31 23:00:00+00:00'
 
 def get_alert_level(hydro, SDDP_alert, start_date, end_date):
     """
@@ -21,9 +20,6 @@ def get_alert_level(hydro, SDDP_alert, start_date, end_date):
     :param end_date:    the last hour of the analized year
     :return:            Alert levels dataframe hourly time-series
     """
-    #TODO: Fix all the function descriptions
-
-    #TODO: check if this should be activated by and if statement
 
     #df_new is used to consider the reservoir initial volume of SDDP as a constraint in the alert level
     df_new = pd.DataFrame(hydro[".VInic."]*hydro[".VMax.."]).T
@@ -73,14 +69,13 @@ def get_demand(SDDP_demand, dfc, buslist, start_date, end_date):
     
     df_t = get_blocks_to_hours(start_date='2021-12-31 23:00:00+00:00', end_date='2026-12-31 23:00:00+00:00')
     # df_t = df_t.drop(['Hour','Weekday'], axis=1)
-    #TODO: Please check that blocks are properly mapped
     
     data_merge = data_merge.drop(['Datetime','Weekday'], axis=1)
     demand = pd.merge( df_t, data_merge,  how="left", on=['Year','Week', 'Block'])
     
     # Filtered Demand
     demand.set_index('Datetime',inplace=True, drop=True)
-    filtered_demand = demand.loc[start_date:end_date]
+    filtered_demand = demand.loc[start_date:end_date].copy()
     filtered_demand.fillna(0, inplace=True) 
     
     #Including missing buses
@@ -115,8 +110,6 @@ def get_NTC(dfc, lines, start_date, end_date):
     :param end_date:    the last hour of the analized year
     :return:            Net transfer capacity hourly time-series
     """
-    #TODO: check if import can be moved to a different script (SDDP_dispa-mapping)
-    # dfc = pd.read_fwf('../../../Dispa-LINK/Inputs/SDDP/dcirc.dat',header=1,colspecs="infer", encoding='cp1252', engine='python')
     dfc.loc[:,'Name']=dfc['Nome........(MVAR)(Tmn)(Tmx)(  MW)(MW)'].str.slice(start=0,stop=12)
     dfc.loc[:,'MW']=dfc['Nome........(MVAR)(Tmn)(Tmx)(  MW)(MW)'].str.slice(start=28,stop=36).astype(float)
 
@@ -128,25 +121,13 @@ def get_NTC(dfc, lines, start_date, end_date):
     dfc=dfc.set_index('Name').T
     dfc = pd.DataFrame(1,index=pd.date_range(start_date, end_date, freq='H'),columns=dfc.columns)*dfc.loc['MW',:]
 
-    #lines between zones
-    #TODO: make as inuts defined by user
-    # lines = {'SU -> CE': ['POT-115 -> OCU-115','SUC-230 -> SAN-230','SUC-230 -> MIZ-230'],
-    #        'CE -> SU': ['OCU-115 -> POT-115','SAN-230 -> SUC-230','MIZ-230 -> SUC-230'],
-    #        'CE -> OR': ['CAR-230 -> YAP-230','CAR-230 -> ARB-230','CAR-500 -> BRE-500'],
-    #        'OR -> CE': ['YAP-230 -> CAR-230','ARB-230 -> CAR-230','BRE-500 -> CAR-500'],
-    #        'OR -> NO': ['GUA-230 -> PRA-230','GUA-230 -> PRA-(2)'],
-    #        'NO -> OR': ['PRA-230 -> GUA-230','PRA-(2) -> GUA-230'],
-    #        'CE -> NO': ['SAN-230 -> PCA-230','VIN-230 -> MAZ-230','SAN-230 -> MIG-230'],
-    #        'NO -> CE': ['PCA-230 -> SAN-230','MAZ-230 -> VIN-230','MIG-230 -> SAN-230']}
-
-    # NTC file
     ntc = pd.DataFrame()
     for l in lines:
         ntc.loc[:,l]=dfc.loc[:,lines[l]].sum(axis=1)
     ntc.index=pd.date_range(start_date,  end_date, freq='H') 
     return ntc
 
-def get_Outages(dft1,dft2, dfh1,dfv1,start_date, end_date):    
+def get_Outages(hydro,dft1,dft2, dfh1,dfv1,start_date, end_date):    
     """
     Function that returns Power Plants' Outages
     : param dft1 :      .csv file of thermal Power Plants' maintenance schedule for five years by week
@@ -172,23 +153,24 @@ def get_Outages(dft1,dft2, dfh1,dfv1,start_date, end_date):
     df_tt =df_tt.assign(Week=df_tt['Datetime'].dt.isocalendar().week, Year=df_tt['Datetime'].dt.isocalendar().year)
     
     outagesterm1 = pd.merge( df_tt, dft1,  how="left", on=['Year','Week'])
+    # outagesterm1 = pd.concat([df_tt.set_index(['Year', 'Week']), dft1.set_index(['Year', 'Week'])], axis=1, join='left').reset_index()
+
     outagesterm1 = outagesterm1.fillna(0)
     outagesterm1.set_index('Datetime', inplace = True)
+    outagesterm1 = outagesterm1.drop(['Year','Week'], axis=1)
     
-    dft3 = dft2[['...Nombre...','..Ih...']].T
-    dft3.columns = dft3.iloc[0]
-    dft3 = dft3[1:]/100
-    dft3 = pd.concat([dft3] * 6, ignore_index=True)
-    dft3['Year'] = range(2021, 2027)
+    dft2.set_index('...Nombre...', inplace=True)
     
-    outagesterm2 = pd.merge( df_tt, dft3,  how="left", on=['Year'])
-    outagesterm2 = outagesterm2.fillna(0)
-    outagesterm2.set_index('Datetime', inplace = True)
+    outagesterm1=outagesterm1.copy()
+    outagesterm=pd.DataFrame()
+    outagesterm_col=pd.DataFrame()
+    for col in outagesterm1.columns:
+        gmax = dft2.loc[col, '.GerMax']
+        FOR = dft2.loc[col, '..Teif.']
+        potins = dft2.loc[col, '.PotIns']
+        outagesterm_col = (1-gmax *(1-FOR/100)*(1-outagesterm1[col])/potins)
+        outagesterm = pd.concat([outagesterm, outagesterm_col], axis=1)
     
-    outagesterm = outagesterm1.add(outagesterm2, fill_value=0)
-    outagesterm = outagesterm.where(outagesterm <= 1, 1) 
-    outagesterm = outagesterm.drop(['Year','Week'], axis=1)
-        
     #outages hydro units
     dfh1 = dfh1.fillna(0)
     dfh1.iloc[:,2:] = dfh1.iloc[:,2:]/100
@@ -197,10 +179,19 @@ def get_Outages(dft1,dft2, dfh1,dfv1,start_date, end_date):
     #taking into account week 53 for 2026
     dfh1 = pd.concat([dfh1, dfh1.iloc[-1:].copy()])
     dfh1.iloc[-1, dfh1.columns.get_loc('Week')] = 53
-    outageshydro = pd.merge( df_tt, dfh1,  how="left", on=['Year','Week'])
+    outageshydro1 = pd.merge( df_tt, dfh1,  how="left", on=['Year','Week'])
+    outageshydro1 = outageshydro1.fillna(0)
+    outageshydro1.set_index('Datetime', inplace = True)
+    outageshydro1 = outageshydro1.drop(['Year','Week'], axis=1)
+    outageshydro=pd.DataFrame()
+    outageshydro_col=pd.DataFrame()
+    hydro.set_index(hydro.columns[0], inplace=True)
+    for col in outageshydro1.columns:
+        FOR = hydro.loc[col, '..ICP..']
+        potins = hydro.loc[col, '....Pot']
+        outageshydro_col = (1-potins *(1-FOR/100)*(1-outageshydro1[col])/potins)
+        outageshydro = pd.concat([outageshydro, outageshydro_col], axis=1)
     outageshydro = outageshydro.fillna(0)
-    outageshydro.set_index('Datetime', inplace = True)
-    outageshydro = outageshydro.drop(['Year','Week'], axis=1)
     
     #outages vres units
     dfv1[['Num','Name']] = dfv1['!Num Name........'].str.split(' ',expand=True)
@@ -216,16 +207,12 @@ def get_Outages(dft1,dft2, dfh1,dfv1,start_date, end_date):
     outagesvres = outagesvres.drop(['Year','Week'], axis=1)
     
     #merge all the outages
-    Outages = pd.merge( outagesterm, outageshydro,  how="left", on=['Datetime']).merge(outagesvres, how="left", on=['Datetime'])
-    # Outages = pd.merge( outagesterm1, outageshydro,  how="left", on=['Datetime']).merge(outagesvres, how="left", on=['Datetime'])
-    
+    Outages = pd.concat([outagesterm, outageshydro, outagesvres], axis=1)
+
     #Select year 2026 and delete hydro units that don't generate
-    #TODO: maybe drop becase it might not impact Dispa-SET simulation (dispaset doesnt read exces data from csv files)
-    # Outages = Outages.drop(['ANGLG','CRBLG','TIQLG','SRO02LG','CHJLG','CALACHAUM_LG','CALACHAKA_TO',
-    #                         'CHUCALOMA_TO','CHACAJAHU_TO','CARABUCO_TO','UMAPALCA_CA','PALILLA01_CA',
-    #                         'JALANCHA_TO','CALACHAMI_TO','PALILLA02_CA','CHORO_TO','KEWANI_TO',
-    #                         'JUNTAS_TO','FICTICIA','MOLLE'], axis=1)
+    Outages.index = pd.to_datetime(Outages.index)
     Outages = Outages.loc[start_date:end_date]
+    
     return Outages
 
 def get_Power_PlantData(hydro,dft2,dfv1,dbus,buslist):
@@ -239,8 +226,10 @@ def get_Power_PlantData(hydro,dft2,dfv1,dbus,buslist):
     : return:            .csv file Power Plant' database
     """
     
+    hydro =  hydro.reset_index()
     hydro = hydro.rename({'...Nombre...':'Unit','....Pot':'PowerCapacity'}, axis=1)	
-    thermo = dft2[['...Nombre...','..Ih...','.PotIns','Comb']]
+    dft2 =  dft2.reset_index()
+    thermo = dft2[['...Nombre...','.PotIns','Comb']]
     thermo = thermo.rename({'...Nombre...':'Unit','.PotIns':'PowerCapacity','Comb':'Fuel'}, axis=1)	
 
     dfv1[['Num','Unit']] = dfv1['!Num Name........'].str.split(' ',expand=True)
@@ -334,8 +323,6 @@ def get_Power_PlantData(hydro,dft2,dfv1,dbus,buslist):
             ppd['Fuel']=='WIN',
             ppd['Fuel']=='SUN']
 
-    #TODO: improve it so that its part of the ppd dataframe
-
     ppd['Efficiency'] = np.select(cond, [1,0.35,0.35,0.31,1,1])
     ppd['MinUpTime'] = np.select(cond, [0,0,0,0,0,0])
     ppd['MinDownTime'] = np.select(cond, [0,0,0,0,0,0])
@@ -365,8 +352,8 @@ def get_Power_PlantData(hydro,dft2,dfv1,dbus,buslist):
                                      'STOMaxChargingPower','STOChargingEfficiency','Nunits']] 
 
     #Assign specific STOSelfDischarge values for some hydro power plants
-    condition = (PowerPlantData['Unit'] == 'COR') | (PowerPlantData['Unit'] == 'MIG') | (PowerPlantData['Unit'] == 'ANG') | (PowerPlantData['Unit'] == 'ZON') | (PowerPlantData['Unit'] == 'MIS')
-    PowerPlantData.loc[condition, 'STOSelfDischarge'] = [0.0000005, 0.00000007, 0.00000008, 0.00000006, 0.00000005]
+    condition = (PowerPlantData['Unit'] == 'COR') | (PowerPlantData['Unit'] == 'MIG') | (PowerPlantData['Unit'] == 'ANG') | (PowerPlantData['Unit'] == 'MIS')
+    PowerPlantData.loc[condition, 'STOSelfDischarge'] = [0.00000008, 0.0000002, 0.00000005, 0.00000007]
     # Assining zones
     zones = dict(zip(buslist['Busname'], buslist['Zones']))
     PowerPlantData.insert(3,'Zone',PowerPlantData['Zones'].map(zones))
@@ -391,11 +378,11 @@ def get_renewables_AF(vresaf,start_date, end_date):
        
     # Including week 53
     mask = (vresaf['Year'] == 2026) & (vresaf['Week'] == 52)
-    filtered_vresaf = vresaf.loc[mask]
+    filtered_vresaf = vresaf.loc[mask].copy()
     filtered_vresaf['Week'] = filtered_vresaf['Week'].replace(52,53) 
     vresaf = pd.concat([vresaf, filtered_vresaf])
 
-    # TODO: Please check that blocks are properly mapped     
+    
     df_t = get_blocks_to_hours(start_date='2021-12-31 23:00:00+00:00', end_date='2026-12-31 23:00:00+00:00')
     RenewablesAF = pd.merge( df_t, vresaf,  how="left", on=['Year','Week', 'Block'])
     RenewablesAF.set_index('Datetime',inplace=True, drop=True)
@@ -412,6 +399,7 @@ def get_Spillage_Cost(hydro,start_date, end_date):
     : param end_date:    the last hour of the analized year
     : return:            .csv file Spillage cost hourly time-series
     """
+    hydro =  hydro.reset_index()
     hydro.set_index("...Nombre...",drop=True,inplace=True)
     
     # Units conversion to dollars/MWh 
@@ -466,7 +454,6 @@ def get_Scaled_inflows(InflowsSDDP,hydro):
         if d.isocalendar()[1] == 53:
             next_year = year + 1
             new_row = InflowsSDDP.loc[(InflowsSDDP['Año'] == str(next_year)) & (InflowsSDDP['Etapa'] == str(1))].copy()      
-            # InflowsSDDP = InflowsSDDP.append(new_row)
             InflowsSDDP = pd.concat([InflowsSDDP,new_row],ignore_index=True)
     InflowsSDDP = InflowsSDDP.iloc[:,:-2].sort_index()
     InflowsSDDP.columns = InflowsSDDP.columns.astype('int64')
@@ -484,21 +471,10 @@ def get_Scaled_inflows(InflowsSDDP,hydro):
     #Aproximation of Outflow and Spillage for units "_LG" "_CA" "_TO"
     def get_storage_outputs(InflowsPerSec, dam_name='', STORAGE=0, Qm=0):
         """
-        Parameters
-        ----------
-        InflowsPerSec : TYPE
-            DESCRIPTION.
-        dam_name : TYPE, optional
-            DESCRIPTION. The default is ''.
-        STORAGE : TYPE, optional
-            DESCRIPTION. The default is 0.
-        Qm : TYPE, optional
-            DESCRIPTION. The default is 0.
-
-        Returns
-        -------
-        None.
-
+        This function returns the approximation of spillage and outflows of non-generating units based on the maximum storage and the maximum turbining outflows
+        :InflowsPerSec:        SDDP weekly inflows
+        :dam_name:             name of the hydro dam
+        :return:               dataframe with weekly approximation of spillage and outflows         
         """
         
         df=InflowsPerSec[dam_name]
@@ -582,8 +558,6 @@ def get_Scaled_inflows(InflowsSDDP,hydro):
     df.loc[:,'PALILLA01_CA'] = df[:]['PALILLA01_CA']+df[:]['UMA'].clip(upper=float(QMax.loc['UMA']))+df[:]['CALACHAMI_TO'].clip(upper=float(QMax.loc['CALACHAMI_TO']))+df[:]['JALANCHA_TO'].clip(upper=float(QMax.loc['JALANCHA_TO']))
     df.loc[:,'PALILLA02_CA'] = df[:]['PALILLA02_CA']+df[:]['CHORO_TO'].clip(upper=float(QMax.loc['CHORO_TO']))+df[:]['PALILLA01_CA'].clip(upper=float(QMax.loc['PALILLA01_CA']))
     df.loc[:,'PLD'] = df[:]['PLD']+df[:]['PALILLA02_CA'].clip(upper=float(QMax.loc['PALILLA02_CA']))+df[:]['KEWANI_TO'].clip(upper=float(QMax.loc['KEWANI_TO']))
-
-    # df.to_csv('../04_DISPASET_DATABASE/Scaled_Inflows/Inflows.csv')
 
     # Scaled inflows
     ScaledInflows = pd.DataFrame(index=df.index, columns=df.columns)
