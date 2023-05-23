@@ -241,22 +241,11 @@ def get_Power_PlantData(hydro,dft2,dfv1,dbus,buslist):
     plthydro = pd.merge(hydro, dbus,  how="left", on=['Unit'])
 
     # Removing the units that don´t have generation and conversion factor
-    mask = (plthydro['PowerCapacity'] == 0) & (plthydro['.FPMed.'] == 0) & (plthydro['.VMax..'] < 0.3)
-    plthydro = plthydro[~mask]
-    plthydro.reset_index(inplace = True)
-    # Summing storage capacity of lagoons to power plants
-    for i, row in plthydro.iterrows():
-        if row['.VMax..'] != 0 and row['PowerCapacity'] == 0:
-            plthydro.loc[i+1, '.VMax..'] += row['.VMax..']
     mask = (plthydro['PowerCapacity'] == 0) & (plthydro['.FPMed.'] == 0)
     plthydro = plthydro[~mask]
 
     plthydro[['Technology','Fuel']] = 'HDAM','WAT'
     plthydro['STOCapacity'] = (plthydro['.VMax..'] * plthydro['.FPMed.'] * 10000)/36
-
-    # Removing the units that don´t have generation and conversion factor
-    mask = (plthydro['PowerCapacity'] == 0) & (plthydro['.FPMed.'] == 0)
-    plthydro = plthydro[~mask]
 
     # TERMO
     pltthermo = pd.merge(thermo, dbus,  how="left", on=['Unit'])
